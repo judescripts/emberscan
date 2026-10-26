@@ -24,24 +24,41 @@ class AbsentWithin(_Strict):
     type: Literal["absent_within"]
     # A number of feet, or "eave" for the eave-depth strip (clamped to min_ft..max_ft).
     ft: float | Literal["eave"]
+    # Numeric ft: inner edge of the band (e.g. Zone 2 starts at 30 ft). "eave": clamp bounds.
+    min_ft: float | None = None
+    max_ft: float | None = None
+    # Hazard classes the rule leaves out (e.g. trees are excepted from the Z0-08 strip).
+    exclude: list[str] = Field(default_factory=list)
 
 
 class MinClearance(_Strict):
     type: Literal["min_clearance"]
     ft: float
+    # What the clearance is measured to ("chimney", "window_door_vent", "propane_tank", ...).
+    # None or "wall" means the hazard's distance from the wall line.
+    reference: str | None = None
+    subject: str | None = None
+    exclude: list[str] = Field(default_factory=list)
 
 
 class MaxHeight(_Strict):
     type: Literal["max_height"]
     inches: float
+    exclude: list[str] = Field(default_factory=list)
 
 
 class Present(_Strict):
     type: Literal["present"]
+    # Where the hazard must be for the rule to apply ("roof", "under_deck_..."), if anywhere.
+    location: str | None = None
+    exclude: list[str] = Field(default_factory=list)
 
 
 class ManualReview(_Strict):
     type: Literal["manual_review"]
+    # Optional reach in feet from the wall (e.g. ALL-04's 100 ft).
+    ft: float | None = None
+    exclude: list[str] = Field(default_factory=list)
 
 
 Check = Annotated[

@@ -23,6 +23,10 @@ Every library, model, dataset and asset used by EmberScan, with its license. Upd
 | NumPy | 2.x | BSD-3-Clause | Image math (sharpness, hashing) |
 | Pillow | 11-12.x | MIT-CMU (HPND) | Image loading and resizing |
 | HTTPX | 0.x | BSD-3-Clause | Meta Model API client |
+| OpenCV (opencv-python-headless) | 4.x | Apache-2.0 | Marker detection, homography |
+| FastAPI | 0.x | MIT | Worker HTTP service |
+| Uvicorn | 0.x | BSD-3-Clause | Worker ASGI server |
+| python-multipart | 0.x | Apache-2.0 | Video upload parsing |
 | @meta-sam/parser | 0.1.0 | SAM License (royalty-free use and redistribution) | Parsing SAM 3.1 segmentation responses (Node helper) |
 | FFmpeg (system tool, not bundled) | 9.x | LGPL/GPL (invoked as a separate program) | Video normalization, frames, audio |
 | pytest | 8.x | MIT | Tests |

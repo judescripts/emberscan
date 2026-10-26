@@ -1,0 +1,160 @@
+"""Worker HTTP API (docs/contracts/README.md). Run locally:
+
+    .venv/bin/uvicorn emberscan_workers.service:app --port 8000
+
+Scans run in-process as background tasks; state is persisted under WORKER_DATA_DIR so
+finished reports survive restarts.
+"""
+
+from __future__ import annotations
+
+import asyncio
+import json
+import os
+import re
+import uuid
+from pathlib import Path
+
+from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, UploadFile
+from fastapi.responses import FileResponse
+
+from .contracts import Range, Report
+from .hazards import BY_CLASS, CORE
+from .meta import MetaClient
+from .pipeline import ScanJob, run_scan
+
+REPO_ROOT = Path(__file__).resolve().parents[3]
+
+
+def _load_env_file() -> None:
+    """Minimal .env loader (repo root .env), without overriding real env vars."""
+    path = Path(os.environ.get("WORKER_ENV_FILE", REPO_ROOT / ".env"))
+    if not path.exists():
+        return
+    for line in path.read_text(encoding="utf-8-sig").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        k, v = line.split("=", 1)
+        if v.strip() and k.strip() not in os.environ:
+            os.environ[k.strip()] = v.strip()
+
+
+_load_env_file()
+DATA_DIR = Path(os.environ.get("WORKER_DATA_DIR", REPO_ROOT / "workers" / ".data" / "scans"))
+MAX_UPLOAD_BYTES = 500 * 1024 * 1024
+ALLOWED_EXT = {".mp4", ".mov", ".m4v"}
+SCAN_ID = re.compile(r"^[a-z0-9-]{8,64}$")
+
+app = FastAPI(title="EmberScan worker", version="0.1.0")
+JOBS: dict[str, ScanJob] = {}
+
+
+def require_token(authorization: str | None = Header(default=None)) -> None:
+    token = os.environ.get("WORKER_TOKEN")
+    if token and authorization != f"Bearer {token}":
+        raise HTTPException(401, "missing or wrong token")
+
+
+def _save_state(job: ScanJob) -> None:
+    (job.dir / "job.json").write_text(json.dumps(job.public(with_report=False)), encoding="utf-8")
+
+
+def _load_job(scan_id: str) -> ScanJob | None:
+    d = DATA_DIR / scan_id
+    state = d / "job.json"
+    if not state.exists():
+        return None
+    s = json.loads(state.read_text(encoding="utf-8"))
+    job = ScanJob(scan_id=scan_id, dir=d, video_path=d, building_label="")
+    job.status, job.stage, job.progress = s["status"], s["stage"], s["progress"]
+    job.stages, job.error, job.created_at = s["stages"], s.get("error"), s.get("created_at", "")
+    if job.status == "processing":  # the worker restarted mid-run
+        job.status, job.error = "failed", "Worker restarted during processing; please rescan."
+    rep = d / "report.json"
+    if rep.exists():
+        job.report = Report.model_validate_json(rep.read_text(encoding="utf-8"))
+    return job
+
+
+async def _run(job: ScanJob) -> None:
+    try:
+        async with MetaClient() as client:
+            await run_scan(job, client, notify=_save_state)
+    except Exception:
+        pass  # error is recorded on the job
+    finally:
+        _save_state(job)
+
+
+@app.get("/health")
+async def health() -> dict:
+    return {"ok": True, "jobs": len(JOBS)}
+
+
+@app.post("/scans", status_code=202, dependencies=[Depends(require_token)])
+async def create_scan(
+    video: UploadFile = File(...),
+    building_label: str = Form(...),
+    eave_depth_ft: float | None = Form(default=None),
+    include_proposed: bool = Form(default=True),
+    concepts: str | None = Form(default=None),
+) -> dict:
+    ext = Path(video.filename or "").suffix.lower() or ".mp4"
+    if ext not in ALLOWED_EXT:
+        raise HTTPException(415, f"unsupported video type {ext}; use MP4 or MOV")
+    scan_id = uuid.uuid4().hex[:16]
+    d = DATA_DIR / scan_id
+    d.mkdir(parents=True, exist_ok=True)
+    path = d / f"upload{ext}"
+    size = 0
+    with path.open("wb") as f:
+        while chunk := await video.read(1024 * 1024):
+            size += len(chunk)
+            if size > MAX_UPLOAD_BYTES:
+                raise HTTPException(413, "video is larger than 500 MB")
+            f.write(chunk)
+    chosen = list(CORE)
+    if concepts:
+        names = [c.strip() for c in concepts.split(",") if c.strip()]
+        chosen = [BY_CLASS[n] for n in names if n in BY_CLASS] or chosen
+    eave = Range(min=eave_depth_ft, max=eave_depth_ft) if eave_depth_ft else None
+    job = ScanJob(
+        scan_id=scan_id,
+        dir=d,
+        video_path=path,
+        building_label=building_label[:120],
+        eave_depth_ft=eave,
+        include_proposed=include_proposed,
+        concepts=chosen,
+    )
+    JOBS[scan_id] = job
+    _save_state(job)
+    asyncio.create_task(_run(job))
+    return {"scan_id": scan_id}
+
+
+def _job(scan_id: str) -> ScanJob:
+    if not SCAN_ID.match(scan_id):
+        raise HTTPException(404, "no such scan")
+    job = JOBS.get(scan_id) or _load_job(scan_id)
+    if job is None:
+        raise HTTPException(404, "no such scan")
+    JOBS[scan_id] = job
+    return job
+
+
+@app.get("/scans/{scan_id}", dependencies=[Depends(require_token)])
+async def get_scan(scan_id: str) -> dict:
+    return _job(scan_id).public()
+
+
+@app.get("/scans/{scan_id}/files/{path:path}", dependencies=[Depends(require_token)])
+async def get_file(scan_id: str, path: str) -> FileResponse:
+    job = _job(scan_id)
+    target = (job.dir / path).resolve()
+    if job.dir.resolve() not in target.parents or not target.is_file():
+        raise HTTPException(404, "no such file")
+    if target.suffix.lower() not in {".jpg", ".jpeg", ".png", ".webp"}:
+        raise HTTPException(404, "no such file")
+    return FileResponse(target)

@@ -69,6 +69,25 @@ class MetaClient:
         if resp.status_code not in (200, 204, 404):
             self._raise_for(resp)
 
+    async def create_response(self, body: dict[str, Any]) -> dict[str, Any]:
+        """POST /responses (non-streaming) and return the response object."""
+        resp = await self._http.post("/responses", json={**body, "stream": False})
+        self._raise_for(resp)
+        return resp.json()
+
+    async def transcribe_wav(self, wav: Path, request: dict[str, Any]) -> dict[str, Any]:
+        """POST /asr/transcribe (multipart: JSON `request` part + WAV `audio` part)."""
+        with wav.open("rb") as f:
+            resp = await self._http.post(
+                "/asr/transcribe",
+                files={
+                    "request": (None, json.dumps(request), "application/json"),
+                    "audio": (wav.name, f, "audio/wav"),
+                },
+            )
+        self._raise_for(resp)
+        return resp.json()
+
     async def stream_response(self, body: dict[str, Any]) -> AsyncIterator[dict[str, Any]]:
         """POST /responses with stream=true and yield each server-sent event as a dict."""
         payload = {**body, "stream": True}

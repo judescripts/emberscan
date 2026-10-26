@@ -31,3 +31,4 @@ tmp/
 Thumbs.db
 .vscode/
 .idea/
+workers/.data/
