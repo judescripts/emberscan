@@ -111,13 +111,34 @@ def _render(
             1,
             cv2.LINE_AA,
         )
-    (tw, th), _ = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.6, 2)
-    cv2.rectangle(img, (8, 8), (20 + tw, 20 + th + 6), (33, 36, 43), -1)
-    cv2.putText(
-        img, label, (14, 14 + th), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2, cv2.LINE_AA
-    )
+    img = _caption_below(img, label)
     out_path.parent.mkdir(parents=True, exist_ok=True)
     return bool(cv2.imwrite(str(out_path), img, [cv2.IMWRITE_JPEG_QUALITY, 85]))
+
+
+def _caption_below(img: np.ndarray, text: str) -> np.ndarray:
+    """Add the label in a strip under the frame, so it never covers what was captured."""
+    w = img.shape[1]
+    font, scale = cv2.FONT_HERSHEY_SIMPLEX, max(0.55, 0.75 * w / 1280)
+    thick = 2 if scale >= 0.9 else 1
+    lines, line = [], ""
+    for word in text.split():  # wrap to the frame width
+        trial = f"{line} {word}".strip()
+        if line and cv2.getTextSize(trial, font, scale, thick)[0][0] > w - 24:
+            lines.append(line)
+            line = word
+        else:
+            line = trial
+    lines.append(line)
+    th = cv2.getTextSize("Ag", font, scale, thick)[0][1]
+    pad, gap = 12, 8
+    strip = np.full(
+        (pad * 2 + len(lines) * th + (len(lines) - 1) * gap, w, 3), (33, 36, 43), np.uint8
+    )
+    for i, ln in enumerate(lines):
+        y = pad + th + i * (th + gap)
+        cv2.putText(strip, ln, (12, y), font, scale, (255, 255, 255), thick, cv2.LINE_AA)
+    return np.vstack([img, strip])
 
 
 def _clearest_frame(track: Track, frames: list[Path]) -> int:

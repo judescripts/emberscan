@@ -49,14 +49,30 @@ function Frame({ hazard, report, imageBase, n, tone }: { hazard: Hazard; report:
       }
     : null;
   const src = ev?.image_path && imageBase ? `${imageBase}/${ev.image_path.split("/").map(encodeURIComponent).join("/")}` : null;
+  if (src) {
+    // Annotated frame from the worker: mask, wall line and a caption strip under the frame are
+    // drawn in, so nothing is laid over it here. Shown whole (no crop). Same-origin proxy route.
+    return (
+      <figure className="m-0">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={src}
+          alt={`Video frame ${ev!.frame_index} showing ${hazard.label}`}
+          className="block h-auto w-full rounded-xl bg-soft"
+          loading="lazy"
+        />
+        <figcaption className="mt-1 text-xs text-muted">
+          <span className={cx("mr-1 rounded px-1.5 py-0.5 font-bold text-surface", BG[tone])}>{n}</span>
+          Frame {ev!.frame_index} at {formatTimestamp(ev!.timestamp_ms)} · SAM 3.1 object #{hazard.track_id} for “{hazard.concept}”
+          {typeof hazard.sam_confidence === "number" && ` · match score ${Math.round(hazard.sam_confidence * 100)}%`}
+        </figcaption>
+      </figure>
+    );
+  }
   return (
     <figure className="m-0">
       <div className="relative w-full overflow-hidden rounded-xl bg-soft" style={{ aspectRatio: `${W} / ${H}` }}>
-        {src ? (
-          // Annotated frame from the worker (mask + ruler drawn in). Same-origin proxy route.
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={src} alt={`Video frame ${ev!.frame_index} showing ${hazard.label}`} className="absolute inset-0 h-full w-full object-cover" loading="lazy" />
-        ) : (
+        {(
           <div
             className="absolute inset-0 flex items-end justify-start p-2 text-[11px] text-muted"
             style={{
