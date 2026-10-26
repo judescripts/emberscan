@@ -25,7 +25,7 @@ function Message({ state }: { state: FormState }) {
 export interface CommunityValues {
   id?: string;
   name: string;
-  type: "HOA" | "Condo" | "Home";
+  type: "HOA" | "Condo" | "Home" | "Commercial";
   place: string;
   rulePack: string;
   includeProposed: boolean;
@@ -52,7 +52,7 @@ export function CommunityForm({
       <fieldset>
         <legend className="text-sm font-semibold text-ink">Type</legend>
         <div className="mt-1 flex flex-wrap gap-2">
-          {(["HOA", "Condo", "Home"] as const).map((t) => (
+          {(["HOA", "Condo", "Home", "Commercial"] as const).map((t) => (
             <label key={t} className="flex cursor-pointer items-center gap-2 rounded-xl border border-line bg-surface px-3 py-2 text-sm has-[:checked]:border-brand has-[:checked]:bg-soft">
               <input type="radio" name="type" value={t} defaultChecked={values.type === t} className="accent-[var(--brand)]" />
               {t === "Home" ? "Single home" : t}

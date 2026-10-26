@@ -1,7 +1,7 @@
 import { boolean, index, integer, jsonb, pgTable, real, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 import type { Report, WorkerStage } from "../report-types";
 
-export type CommunityType = "HOA" | "Condo" | "Home";
+export type CommunityType = "HOA" | "Condo" | "Home" | "Commercial";
 export type EaveMode = "video" | "known";
 export type FixStatus = "open" | "progress" | "fixed" | "verified" | "wontfix";
 export type Responsibility = "HOA" | "Owner" | "Unclear";

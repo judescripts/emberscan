@@ -8,7 +8,7 @@ export const metadata: Metadata = { title: "New community" };
 export default function NewCommunityPage() {
   return (
     <main>
-      <PageHeader title="New community" kicker="An HOA, a condo complex, or a single home" />
+      <PageHeader title="New community" kicker="An HOA, a condo complex, a single home, or a commercial site" />
       <Card className="max-w-xl">
         <CommunityForm
           packs={PACK_OPTIONS.map((p) => ({ ...p }))}

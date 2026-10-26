@@ -22,7 +22,7 @@ async function Buildings() {
     return (
       <Card>
         <h1 className="text-xl font-bold">Start with a community</h1>
-        <p className="mt-1 text-muted">Add your HOA, condo or home, then its buildings. Each building gets its own scan.</p>
+        <p className="mt-1 text-muted">Add your HOA, condo, home or commercial site, then its buildings. Each building gets its own scan.</p>
         <ButtonLink href="/manage/new" className="mt-4">
           + New community
         </ButtonLink>

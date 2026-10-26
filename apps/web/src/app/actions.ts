@@ -31,7 +31,7 @@ export async function selectCommunity(id: string) {
   refresh();
 }
 
-const TYPES: CommunityType[] = ["HOA", "Condo", "Home"];
+const TYPES: CommunityType[] = ["HOA", "Condo", "Home", "Commercial"];
 
 export async function saveCommunity(_prev: FormState, fd: FormData): Promise<FormState> {
   const id = text(fd, "id", 64);
