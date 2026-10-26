@@ -1,0 +1,28 @@
+# Third-party licenses
+
+Every library, model, dataset and asset used by EmberScan, with its license. Updated whenever a dependency is added (rule: only use what we have the rights to).
+
+## Models and APIs
+
+| Name | Used for | License / terms | Attribution required |
+|---|---|---|---|
+| Meta Model API (Muse Spark, SAM 3.1, Voice Transcribe, Muse Image) | Agent, vision, narration, illustrations | Meta Model API terms | — |
+| Muse Spark Open | Open-weight agent path | Muse Spark Open license | Yes: "Built with Muse Spark Open" |
+
+## Libraries
+
+| Name | Version | License | Used for |
+|---|---|---|---|
+| _none yet_ | | | |
+
+## Data and content
+
+| Name | Source | License / status | Used for |
+|---|---|---|---|
+| California defensible-space rules | CAL FIRE, PRC 4291, 14 CCR, Board of Forestry | Public law / government publications, cited per rule | Rules engine |
+
+## Assets
+
+| Name | Source | License |
+|---|---|---|
+| Test footage | Filmed by the author (building exteriors only) | Author's own |
