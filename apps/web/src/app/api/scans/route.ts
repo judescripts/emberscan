@@ -2,7 +2,7 @@ import { getDb } from "@/lib/db";
 import { getBuilding, getCommunity } from "@/lib/db/queries";
 import { scans } from "@/lib/db/schema";
 import { isUuid } from "@/lib/ids";
-import { WorkerUnreachable, workerFetch, workerUrl } from "@/lib/worker";
+import { WorkerUnreachable, passcodeOk, workerFetch, workerUrl } from "@/lib/worker";
 
 // POST /api/scans?building=<id>  body: multipart/form-data with a single `video` file part.
 // Streams the upload straight through to the worker's POST /scans (no buffering in memory),
@@ -22,6 +22,9 @@ function fieldPart(boundary: string, name: string, value: string): string {
 export async function POST(request: Request) {
   const buildingId = new URL(request.url).searchParams.get("building");
   if (!isUuid(buildingId)) return Response.json({ error: "bad_request", message: "Pick a building first." }, { status: 400 });
+  if (!passcodeOk(request.headers.get("x-scan-passcode"))) {
+    return Response.json({ error: "passcode", message: "That scan passcode isn't right." }, { status: 401 });
+  }
   const ct = request.headers.get("content-type");
   const boundary = boundaryOf(ct);
   if (!boundary || !ct?.toLowerCase().startsWith("multipart/form-data") || !request.body) {
@@ -66,6 +69,13 @@ export async function POST(request: Request) {
       );
     }
     throw err;
+  }
+  if (res.status === 429) {
+    const body = (await res.json().catch(() => ({}))) as { detail?: string };
+    return Response.json(
+      { error: "budget", message: `${body.detail ?? "The scan budget is used up."} The sample report is still available.` },
+      { status: 429 },
+    );
   }
   if (!res.ok) {
     const text = await res.text().catch(() => "");

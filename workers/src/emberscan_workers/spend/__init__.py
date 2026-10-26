@@ -1,5 +1,6 @@
 """Spend tracking (story F3): price every model call and stop a run before it overspends."""
 
+from .budget import Budget, BudgetExhausted
 from .ledger import SpendLedger, SpendLimitExceeded, UsageRecord
 from .pricing import (
     PRICES_CHECKED_ON,
@@ -10,6 +11,8 @@ from .pricing import (
 )
 
 __all__ = [
+    "Budget",
+    "BudgetExhausted",
     "PRICES_CHECKED_ON",
     "SpendLedger",
     "SpendLimitExceeded",

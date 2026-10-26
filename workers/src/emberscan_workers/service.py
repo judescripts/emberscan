@@ -22,6 +22,7 @@ from .contracts import Range, Report
 from .hazards import BY_CLASS, CORE
 from .meta import MetaClient
 from .pipeline import ScanJob, run_scan
+from .spend import Budget, BudgetExhausted
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 
@@ -48,6 +49,7 @@ SCAN_ID = re.compile(r"^[a-z0-9-]{8,64}$")
 
 app = FastAPI(title="EmberScan worker", version="0.1.0")
 JOBS: dict[str, ScanJob] = {}
+BUDGET = Budget.from_env(DATA_DIR)
 
 
 def require_token(authorization: str | None = Header(default=None)) -> None:
@@ -84,12 +86,18 @@ async def _run(job: ScanJob) -> None:
     except Exception:
         pass  # error is recorded on the job
     finally:
+        BUDGET.release(job.scan_id)
         _save_state(job)
 
 
 @app.get("/health")
 async def health() -> dict:
     return {"ok": True, "jobs": len(JOBS)}
+
+
+@app.get("/budget", dependencies=[Depends(require_token)])
+async def budget() -> dict:
+    return BUDGET.status()
 
 
 @app.post("/scans", status_code=202, dependencies=[Depends(require_token)])
@@ -104,16 +112,24 @@ async def create_scan(
     if ext not in ALLOWED_EXT:
         raise HTTPException(415, f"unsupported video type {ext}; use MP4 or MOV")
     scan_id = uuid.uuid4().hex[:16]
+    try:
+        BUDGET.reserve(scan_id)  # before any upload work: refuse fast when over budget
+    except BudgetExhausted as e:
+        raise HTTPException(429, str(e)) from e
     d = DATA_DIR / scan_id
     d.mkdir(parents=True, exist_ok=True)
     path = d / f"upload{ext}"
     size = 0
-    with path.open("wb") as f:
-        while chunk := await video.read(1024 * 1024):
-            size += len(chunk)
-            if size > MAX_UPLOAD_BYTES:
-                raise HTTPException(413, "video is larger than 500 MB")
-            f.write(chunk)
+    try:
+        with path.open("wb") as f:
+            while chunk := await video.read(1024 * 1024):
+                size += len(chunk)
+                if size > MAX_UPLOAD_BYTES:
+                    raise HTTPException(413, "video is larger than 500 MB")
+                f.write(chunk)
+    except BaseException:
+        BUDGET.release(scan_id)
+        raise
     chosen = list(CORE)
     if concepts:
         names = [c.strip() for c in concepts.split(",") if c.strip()]

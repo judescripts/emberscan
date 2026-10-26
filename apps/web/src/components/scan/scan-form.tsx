@@ -20,6 +20,9 @@ export function ScanForm({
   const [health, setHealth] = useState<Health>("checking");
   const [uploadPct, setUploadPct] = useState<number | null>(null);
   const [error, setError] = useState<{ message: string; offline: boolean } | null>(null);
+  const [needsPasscode, setNeedsPasscode] = useState(false);
+  const [passcode, setPasscode] = useState("");
+  const [scansLeft, setScansLeft] = useState<number | null>(null);
   const [samplePending, startSample] = useTransition();
   const xhrRef = useRef<XMLHttpRequest | null>(null);
 
@@ -27,7 +30,12 @@ export function ScanForm({
     let alive = true;
     fetch("/api/worker/health", { cache: "no-store" })
       .then((r) => r.json())
-      .then((j: { ok: boolean }) => alive && setHealth(j.ok ? "online" : "offline"))
+      .then((j: { ok: boolean; passcodeRequired?: boolean; scansLeftToday?: number | null }) => {
+        if (!alive) return;
+        setHealth(j.ok ? "online" : "offline");
+        setNeedsPasscode(Boolean(j.passcodeRequired));
+        setScansLeft(j.scansLeftToday ?? null);
+      })
       .catch(() => alive && setHealth("offline"));
     return () => {
       alive = false;
@@ -48,6 +56,7 @@ export function ScanForm({
     const xhr = new XMLHttpRequest();
     xhrRef.current = xhr;
     xhr.open("POST", `/api/scans?building=${encodeURIComponent(buildingId)}`);
+    if (needsPasscode) xhr.setRequestHeader("x-scan-passcode", passcode);
     xhr.upload.onprogress = (ev) => {
       if (ev.lengthComputable) setUploadPct(Math.round((ev.loaded / ev.total) * 100));
     };
@@ -63,7 +72,8 @@ export function ScanForm({
         return;
       }
       setUploadPct(null);
-      const offline = body.error === "worker_unreachable";
+      // Over budget behaves like offline: the sample report is the way to see a result.
+      const offline = body.error === "worker_unreachable" || body.error === "budget";
       if (offline) setHealth("offline");
       setError({ message: body.message ?? `Upload failed (${xhr.status}).`, offline });
     };
@@ -95,7 +105,17 @@ export function ScanForm({
           )}
           aria-hidden
         />
-        {health === "online" && <span>Scan pipeline online</span>}
+        {health === "online" && (
+          <span>
+            Scan pipeline online
+            {scansLeft !== null && (
+              <span className="text-muted">
+                {" "}
+                · {scansLeft === 0 ? "daily scan budget used up" : `${scansLeft} scan${scansLeft === 1 ? "" : "s"} left today`}
+              </span>
+            )}
+          </span>
+        )}
         {health === "checking" && <span className="text-muted">Checking the scan pipeline…</span>}
         {health === "offline" && <span>Scan pipeline offline. You can still load the sample report to see the result.</span>}
       </div>
@@ -137,6 +157,27 @@ export function ScanForm({
         </p>
       </div>
 
+      {needsPasscode && (
+        <div>
+          <label htmlFor="passcode" className="text-sm font-semibold text-ink">
+            Scan passcode
+          </label>
+          <input
+            id="passcode"
+            type="password"
+            autoComplete="off"
+            value={passcode}
+            onChange={(e) => setPasscode(e.target.value)}
+            required
+            className={cx(inputClass, "mt-1")}
+            aria-describedby="passcode-help"
+          />
+          <p id="passcode-help" className="mt-1 text-xs text-muted">
+            Live scans call paid AI models, so they need a passcode. Anyone can browse the sample report.
+          </p>
+        </div>
+      )}
+
       {uploading && (
         <div>
           <div className="flex justify-between text-sm">
@@ -151,7 +192,7 @@ export function ScanForm({
 
       {error && (
         <div role="alert" className="rounded-xl border border-fail bg-fail-soft p-3 text-sm text-ink">
-          <p className="font-semibold text-fail">{error.offline ? "Couldn't reach the scan pipeline" : "Upload failed"}</p>
+          <p className="font-semibold text-fail">{error.offline ? "Can't run a scan right now" : "Upload failed"}</p>
           <p className="mt-0.5">{error.message}</p>
           {error.offline && (
             <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -163,7 +204,7 @@ export function ScanForm({
       )}
 
       <div className="flex flex-wrap gap-2">
-        <button type="submit" className={buttonClass("primary")} disabled={!file || !buildingId || uploading}>
+        <button type="submit" className={buttonClass("primary")} disabled={!file || !buildingId || uploading || (needsPasscode && !passcode)}>
           {uploading ? "Uploading…" : "Start scan"}
         </button>
         {health === "offline" && !error?.offline && sampleButton}

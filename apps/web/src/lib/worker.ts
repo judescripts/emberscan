@@ -40,6 +40,32 @@ export async function workerHealth(): Promise<boolean> {
   }
 }
 
+export type WorkerBudget = { scans_left_today: number; spent_24h_usd: number; daily_limit_usd: number };
+
+export async function workerBudget(): Promise<WorkerBudget | null> {
+  try {
+    const res = await workerFetch("/budget", {}, 2500);
+    return res.ok ? ((await res.json()) as WorkerBudget) : null;
+  } catch {
+    return null;
+  }
+}
+
+// Optional shared passcode for starting scans (SCAN_PASSCODE). Browsing stays open; only the
+// paid step is gated, so a public demo link can't be used to drain the Meta account.
+export function passcodeRequired(): boolean {
+  return Boolean(process.env.SCAN_PASSCODE);
+}
+
+export function passcodeOk(given: string | null): boolean {
+  const want = process.env.SCAN_PASSCODE;
+  if (!want) return true;
+  if (!given || given.length !== want.length) return false;
+  let diff = 0;
+  for (let i = 0; i < want.length; i++) diff |= want.charCodeAt(i) ^ given.charCodeAt(i);
+  return diff === 0;
+}
+
 export async function getWorkerScan(workerScanId: string): Promise<WorkerScan> {
   const res = await workerFetch(`/scans/${encodeURIComponent(workerScanId)}`);
   if (!res.ok) throw new Error(`Worker returned ${res.status} for scan ${workerScanId}`);
