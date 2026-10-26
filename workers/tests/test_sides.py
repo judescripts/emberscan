@@ -51,3 +51,16 @@ def test_nothing_known_leaves_sides_unknown() -> None:
     assert assign_sides(hs, 3.0, [], [], []) == 0 and hs[0].side == "unknown"
     # one untagged-but-named single clip
     assert assign_sides(hs, 3.0, [], ["S"], []) == 1 and hs[0].side == "S"
+
+
+def test_tracks_split_at_clip_cuts() -> None:
+    from emberscan_workers.meta.sam import Box, SegmentationResult, Track
+    from emberscan_workers.pipeline import split_at_clips
+
+    box = Box(left=0, top=0, right=1, bottom=1, confidence=0.9)
+    t = Track(object_id="3", concept="shrub", boxes={f: box for f in (5, 6, 40, 41, 42)})
+    res = SegmentationResult("shrub", {"3": t}, 50, 0.01, 1.0, True)
+    clips = [{"start_s": 0.0, "duration_s": 10.0}, {"start_s": 10.0, "duration_s": 10.0}]
+    split_at_clips([res], clips, 3.0)  # cut at frame 30
+    assert sorted(res.tracks) == ["3", "3c1"]
+    assert res.tracks["3"].frames == [5, 6] and res.tracks["3c1"].frames == [40, 41, 42]

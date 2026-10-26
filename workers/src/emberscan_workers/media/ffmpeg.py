@@ -159,6 +159,7 @@ def join_clips(
     dst: Path,
     max_duration_s: float = MAX_DURATION_S,
     fps: float = 30.0,
+    short_side: int = 1080,
 ) -> list[ClipSpan]:
     """Join several walkaround clips into one H.264 MP4, in order.
 
@@ -174,7 +175,8 @@ def join_clips(
         raise MediaError(f"clips total {total:.0f}s; the limit is {max_duration_s:.0f}s")
     first = infos[0]
     w, h = (first.width, first.height) if first.rotation % 180 == 0 else (first.height, first.width)
-    scale = 720 / min(w, h)  # same short side as normalize()
+    # keep detail (the marker is found at full resolution later); never upscale
+    scale = min(short_side, min(w, h)) / min(w, h)
     w, h = int(round(w * scale / 2) * 2), int(round(h * scale / 2) * 2)
     dst.parent.mkdir(parents=True, exist_ok=True)
     parts: list[Path] = []

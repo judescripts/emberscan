@@ -97,7 +97,10 @@ def test_join_clips_mixed_orientation_and_audio(tmp_path: Path) -> None:
     assert spans[0].start_s == 0 and spans[1].start_s == pytest.approx(2, abs=0.1)
     info = probe(tmp_path / "joined.mp4")
     assert info.duration_s == pytest.approx(5, abs=0.2)
-    assert (info.width, info.height) == (1280, 720) and info.has_audio
+    assert (info.width, info.height) == (
+        640,
+        360,
+    ) and info.has_audio  # first clip's canvas, no upscale
     assert not list(tmp_path.glob("_part*"))
 
 

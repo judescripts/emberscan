@@ -243,6 +243,36 @@ def assign_sides(
     return n
 
 
+def split_at_clips(
+    results: list[SegmentationResult], clips: list[dict[str, Any]], sam_fps: float
+) -> None:
+    """SAM tracks across the cut between joined clips can merge two different plants into one
+    object. Split every track at clip boundaries (in place): object "3" seen in clips 1 and 3
+    becomes "3" and "3c2"."""
+    if len(clips) < 2:
+        return
+    edges = [round(c["start_s"] * sam_fps) for c in clips[1:]]
+
+    def clip_of(frame: int) -> int:
+        return sum(1 for e in edges if frame >= e)
+
+    for res in results:
+        out: dict[str, Track] = {}
+        for tid, t in res.tracks.items():
+            parts: dict[int, Track] = {}
+            for f in t.frames:
+                c = clip_of(f)
+                part = parts.setdefault(c, Track(object_id=t.object_id, concept=t.concept))
+                if f in t.boxes:
+                    part.boxes[f] = t.boxes[f]
+                if f in t.masks:
+                    part.masks[f] = t.masks[f]
+            first = min(parts) if parts else 0
+            for c, part in parts.items():
+                out[tid if c == first else f"{tid}c{c}"] = part
+        res.tracks = out
+
+
 # ---------------------------------------------------------------- measurement hook
 
 MeasureFn = Callable[[list[Hazard], dict[str, Track], list[Path], ScanJob], list[Hazard]]
@@ -325,6 +355,7 @@ async def run_scan(
 
         narration_task = asyncio.create_task(_narration(job, client, ledger, norm, p))
         results = await _segment(job, client, ledger, sam_video, p)
+        split_at_clips(results, clips, fps)
 
         await p.set("measure", "running")
         tracks = {
