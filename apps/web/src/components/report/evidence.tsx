@@ -2,6 +2,7 @@ import { formatTimestamp, framesTracked, hazardMeasurements, sideWords, zoneWord
 import type { Hazard, Report } from "@/lib/report-types";
 import { hazardStatus } from "@/lib/score";
 import { StatusPill, toneFor, cx } from "../ui";
+import { EvidenceImage, type Reason } from "./evidence-image";
 
 const RING = { fail: "border-fail", review: "border-review", pass: "border-pass", neutral: "border-muted" } as const;
 const BG = { fail: "bg-fail", review: "bg-review", pass: "bg-pass", neutral: "bg-muted" } as const;
@@ -52,19 +53,24 @@ function Frame({ hazard, report, imageBase, n, tone }: { hazard: Hazard; report:
   if (src) {
     // Annotated frame from the worker: mask, wall line and a caption strip under the frame are
     // drawn in, so nothing is laid over it here. Shown whole (no crop). Same-origin proxy route.
+    const reasons: Reason[] = report.results
+      .filter((r) => r.hazard_ids.includes(hazard.id))
+      .map((r) => ({ ruleId: r.rule_id, title: r.title, status: r.status as Reason["status"], reason: r.reason }));
     return (
       <figure className="m-0">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
+        <EvidenceImage
           src={src}
           alt={`Video frame ${ev!.frame_index} showing ${hazard.label}`}
-          className="block h-auto w-full rounded-xl bg-soft"
-          loading="lazy"
+          measurement={hazardMeasurements(hazard)[0] ?? null}
+          reasons={reasons}
         />
-        <figcaption className="mt-1 text-xs text-muted">
-          <span className={cx("mr-1 rounded px-1.5 py-0.5 font-bold text-surface", BG[tone])}>{n}</span>
-          Frame {ev!.frame_index} at {formatTimestamp(ev!.timestamp_ms)} · SAM 3.1 object #{hazard.track_id} for “{hazard.concept}”
-          {typeof hazard.sam_confidence === "number" && ` · match score ${Math.round(hazard.sam_confidence * 100)}%`}
+        <figcaption className="mt-2.5 flex items-start gap-2 text-xs text-muted">
+          <span className={cx("shrink-0 rounded px-1.5 py-0.5 font-bold text-surface", BG[tone])}>{n}</span>
+          <span className="pt-0.5">
+            Frame {ev!.frame_index} at {formatTimestamp(ev!.timestamp_ms)} · SAM 3.1 object #{hazard.track_id} for “
+            {hazard.concept}”
+            {typeof hazard.sam_confidence === "number" && ` · match score ${Math.round(hazard.sam_confidence * 100)}%`}
+          </span>
         </figcaption>
       </figure>
     );
