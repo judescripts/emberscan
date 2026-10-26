@@ -23,10 +23,10 @@ Machine-readable rule pack: [`us-ca.json`](./us-ca.json) (`pack_id: us-ca`, vers
 | 2026-10-26 | The Board's Zone 0 page still says staff "continue to work with" OAL on final review. No updated rule text for item 13 is posted in the November binder yet. | Board page and binder index (in-app browser) |
 | — | **Zone 0 effective date: none.** An emergency regulation takes effect only after OAL approves it and files it with the Secretary of State (guidance appendix, footnote 1). | — |
 
-**What changed since the 2026-10-21 reference**
-1. The resubmission is now scheduled: Board agenda item 13 for 2026-11-05, posted 2026-10-23. On Oct 21 it was reported as "not refiled". It still is not refiled, but a date to re-adopt is now set.
-2. The Board's updated guidance document (Sept 2026, adopted 2026-08-19) is on the Board's page. PRC 4291(g)(1) requires the guidance update before Zone 0 can take effect for new structures, so this partly answers the earlier statutory-timing question. See VERIFY.
-3. I read the primary statute text directly from leginfo, which earlier runs could not reach. Both PRC 4291 and GC 51182 show "Amended by Stats. 2025, Ch. 731 (AB 1455), effective October 13, 2025."
+**Key points as of 2026-10-26**
+1. The Zone 0 package has not been refiled with OAL, but resubmission is scheduled: Board agenda item 13 for 2026-11-05, posted 2026-10-23.
+2. The Board's updated guidance document (Sept 2026, adopted 2026-08-19) is on the Board's page. PRC 4291(g)(1) requires the guidance update before Zone 0 can take effect for new structures, which partly settles the statutory-timing question. See VERIFY.
+3. The primary statute text was read directly from leginfo: both PRC 4291 and GC 51182 show "Amended by Stats. 2025, Ch. 731 (AB 1455), effective October 13, 2025."
 4. CAL FIRE's ReadyForWildfire page still says Zone 0 is "not legally required yet."
 
 **How each source was read.** WebFetch and curl got HTTP 403 from leginfo.legislature.ca.gov, bof.fire.ca.gov and readyforwildfire.org. I read those pages in the in-app browser (a normal browser session), so the text above comes from the official sites. I read 14 CCR 1299.01–1299.05 from the **Cornell LII mirror** (law.cornell.edu); the official Westlaw CCR site was not fetched. Board PDFs come from the Board's own CDN (azureedge.net links on bof.fire.ca.gov). OAL pages were fetched directly. I did not find a State Fire Marshal funding finding under PRC 4291(h).
