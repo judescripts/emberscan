@@ -305,3 +305,9 @@ Spend is on a personal card until credits post, so the cheapest sensible develop
 **Changed:** See section 10 (Voice Transcribe added, SAM 50-frame minimum, parser 0.1.0, auto-only tool choice, Baseten schema not enforced, Glimmer hosting narrowed, guide login-gated).
 
 **Still VERIFY:** the Baseten `-1026` slug; the open-weight prize criteria; Meta credits; Official Rules; Muse Code prices and hackathon access; SAM resolution, fps and latency; Spark video duration limits; Muse Image prompt length, resolution, watermark and real-photo rules; Modal and Fireworks rate limits.
+
+## 11. First live checks (2026-10-26)
+
+- `GET /v1/models` with our key returned: muse-image-1.0, muse-spark-1.1, muse-spark-1.2, muse-spark-1.2-contributor, muse-spark-1.3, muse-spark-1.3-contributor, muse-voice-transcribe-1.0, muse-wonder-1.0, sam-3.1. All models we plan to use are available on this account.
+- `POST /v1/responses` on `muse-spark-1.3-contributor` with `reasoning.effort: "low"` and `max_output_tokens: 16` returned 200 in 2.7 s with an **empty reply**: 14 of the 16 output tokens were reasoning tokens. **`max_output_tokens` includes reasoning tokens**, so always leave headroom (at least a few hundred tokens for agent steps) and treat an empty message as a retryable error.
+- SAM 3.1, Voice Transcribe and Muse Image are checked on Day 2 with real footage.
