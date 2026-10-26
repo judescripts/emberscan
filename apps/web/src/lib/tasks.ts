@@ -1,4 +1,4 @@
-import type { FixStatus, Responsibility } from "./db/schema";
+import type { FixStatus } from "./db/schema";
 import type { Fix, Report, RuleStatus } from "./report-types";
 
 // Fix tracking rules (ADR 0007): Open, In progress, Fixed – needs rescan, Verified by rescan,
