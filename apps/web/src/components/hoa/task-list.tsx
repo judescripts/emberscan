@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import type { FixStatus, Responsibility } from "@/lib/db/schema";
 import type { RuleStatus } from "@/lib/report-types";
-import { STATUS_LABEL } from "@/lib/tasks";
+import { filterTasks, STATUS_LABEL } from "@/lib/tasks";
 import { formatDate } from "@/lib/format";
 import { Citation, cx, inputClass, Pill, StatusPill } from "../ui";
 
@@ -30,11 +30,7 @@ const STATUSES: (FixStatus | "active")[] = ["active", "open", "progress", "fixed
 export function TaskList({ tasks }: { tasks: TaskRow[] }) {
   const [resp, setResp] = useState<"all" | Responsibility>("all");
   const [status, setStatus] = useState<FixStatus | "active" | "all">("active");
-  const shown = tasks.filter(
-    (t) =>
-      (resp === "all" || t.responsibility === resp) &&
-      (status === "all" || (status === "active" ? t.status !== "verified" && t.status !== "wontfix" : t.status === status)),
-  );
+  const shown = filterTasks(tasks, resp, status);
   return (
     <div>
       <div className="mb-3 grid gap-3 sm:grid-cols-2">

@@ -24,10 +24,6 @@ export function taskRuleId(fix: Fix): string {
   return fix.rule_ids[0] ?? fix.id;
 }
 
-export function defaultOwner(r: Responsibility): string {
-  return r === "HOA" ? "HOA board" : r === "Owner" ? "Homeowner" : "";
-}
-
 export interface RescanOutcome {
   status: FixStatus;
   note?: string;
@@ -52,4 +48,17 @@ export function rescanTransition(prev: FixStatus, ruleStatus: RuleStatus | undef
 
 export function ruleStatusMap(report: Report): Map<string, RuleStatus> {
   return new Map(report.results.map((r) => [r.rule_id, r.status]));
+}
+
+/** HOA tasks filter: by who's responsible (the task's own field, which people can change) and status. */
+export function filterTasks<T extends { responsibility: string; status: string }>(
+  tasks: T[],
+  resp: "all" | "HOA" | "Owner" | "Unclear",
+  status: string,
+): T[] {
+  return tasks.filter(
+    (t) =>
+      (resp === "all" || t.responsibility === resp) &&
+      (status === "all" || (status === "active" ? t.status !== "verified" && t.status !== "wontfix" : t.status === status)),
+  );
 }

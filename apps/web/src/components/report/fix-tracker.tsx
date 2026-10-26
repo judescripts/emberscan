@@ -2,14 +2,15 @@
 
 import { useState, useTransition } from "react";
 import { updateTask } from "@/app/actions";
-import type { FixStatus } from "@/lib/db/schema";
+import type { FixStatus, Responsibility } from "@/lib/db/schema";
 import { STATUS_LABEL, USER_STATUSES } from "@/lib/tasks";
 import { buttonClass, cx, inputClass } from "../ui";
 
 export interface TaskView {
   id: string;
   status: FixStatus;
-  owner: string;
+  responsibility: Responsibility;
+  owner: string; // free-text name of whoever is doing it
   notes: { text: string; at: string; by: string }[];
 }
 
@@ -18,7 +19,13 @@ function noteDate(iso: string) {
   return Number.isNaN(d.getTime()) ? iso : d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
 }
 
-/** Status chips, owner and dated notes for one fix. "Verified" is shown but only a rescan can set it. */
+const RESP_OPTIONS: { value: Responsibility; label: string }[] = [
+  { value: "HOA", label: "HOA" },
+  { value: "Owner", label: "Homeowner" },
+  { value: "Unclear", label: "Unclear" },
+];
+
+/** Status chips, who's responsible, who it's assigned to and dated notes for one fix. "Verified" is shown but only a rescan can set it. */
 export function FixTracker({ task, readOnly }: { task: TaskView | null; readOnly?: boolean }) {
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -116,10 +123,35 @@ export function FixTracker({ task, readOnly }: { task: TaskView | null; readOnly
         </div>
       )}
 
+      <fieldset disabled={pending || readOnly}>
+        <legend className="mb-1.5 text-xs font-semibold text-muted">Who&apos;s responsible</legend>
+        <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label="Who is responsible">
+          {RESP_OPTIONS.map((o) => {
+            const active = task.responsibility === o.value;
+            return (
+              <button
+                key={o.value}
+                type="button"
+                role="radio"
+                aria-checked={active}
+                onClick={() => !active && run({ responsibility: o.value })}
+                className={cx(
+                  "rounded-full border px-2.5 py-1 text-xs font-semibold",
+                  active ? "border-brand bg-brand text-brand-fg" : "border-line bg-surface text-ink hover:bg-soft",
+                )}
+              >
+                {o.label}
+              </button>
+            );
+          })}
+        </div>
+        <p className="mt-1 text-[11px] text-muted">Sets which list this fix appears in on HOA tasks.</p>
+      </fieldset>
+
       <div className="grid gap-3 sm:grid-cols-2">
         <div>
           <label htmlFor={`${idBase}-owner`} className="text-xs font-semibold text-muted">
-            Owner
+            Assigned to <span className="font-normal">(optional name)</span>
           </label>
           <div className="mt-1 flex gap-2">
             <input
@@ -127,7 +159,7 @@ export function FixTracker({ task, readOnly }: { task: TaskView | null; readOnly
               value={owner}
               onChange={(e) => setOwner(e.target.value)}
               className={inputClass}
-              placeholder="Who's on it?"
+              placeholder="e.g. Greenline Landscaping, unit 6"
               disabled={readOnly}
             />
             <button

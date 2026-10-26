@@ -1,6 +1,6 @@
 import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import type { Report } from "../report-types";
-import { defaultOwner, rescanTransition, ruleStatusMap, taskRuleId } from "../tasks";
+import { rescanTransition, ruleStatusMap, taskRuleId } from "../tasks";
 import type { DB } from "./index";
 import { buildings, communities, fixTasks, scans, type Building, type FixNote, type Scan } from "./schema";
 
@@ -68,7 +68,7 @@ export async function syncTasks(db: DB, buildingId: string, scanId: string, repo
         title: fix.title,
         responsibility: fix.owner,
         required: fix.required,
-        owner: defaultOwner(fix.owner),
+        owner: "", // a name is optional; who's responsible lives in `responsibility`
         priority: fix.priority,
         sourceScanId: scanId,
         notes: [],

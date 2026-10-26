@@ -3,7 +3,7 @@ import sample from "./sample-report.json";
 import { describeDistance, formatNumber, formatRange, hazardMeasurements } from "./format";
 import type { Report } from "./report-types";
 import { computeScore, projectedScore, rulePenalty, scoreLabel, topFixes } from "./score";
-import { rescanTransition } from "./tasks";
+import { filterTasks, rescanTransition } from "./tasks";
 import { DEFAULT_GEOMETRY, layoutPins, zoneScale } from "./zonemap";
 
 const report = sample as unknown as Report;
@@ -94,5 +94,27 @@ describe("fix tracking on rescan", () => {
     expect(rescanTransition("fixed", "fail", true).status).toBe("open");
     expect(rescanTransition("wontfix", "pass", false).status).toBe("wontfix");
     expect(rescanTransition("open", "needs-review", true).status).toBe("open");
+  });
+});
+
+describe("HOA tasks filter", () => {
+  const tasks = [
+    { id: "a", responsibility: "HOA", status: "open" },
+    { id: "b", responsibility: "Owner", status: "progress" }, // changed by hand from the agent's "HOA"
+    { id: "c", responsibility: "Unclear", status: "open" },
+    { id: "d", responsibility: "Owner", status: "verified" },
+  ];
+  const ids = (r: { id: string }[]) => r.map((t) => t.id);
+
+  it("filters by who's responsible", () => {
+    expect(ids(filterTasks(tasks, "HOA", "all"))).toEqual(["a"]);
+    expect(ids(filterTasks(tasks, "Owner", "all"))).toEqual(["b", "d"]);
+    expect(ids(filterTasks(tasks, "Unclear", "all"))).toEqual(["c"]);
+    expect(ids(filterTasks(tasks, "all", "all"))).toEqual(["a", "b", "c", "d"]);
+  });
+
+  it("combines with status; 'still to do' hides verified and won't fix", () => {
+    expect(ids(filterTasks(tasks, "Owner", "active"))).toEqual(["b"]);
+    expect(ids(filterTasks(tasks, "all", "open"))).toEqual(["a", "c"]);
   });
 });

@@ -7,7 +7,7 @@ import { redirect } from "next/navigation";
 import { COMMUNITY_COOKIE } from "@/lib/current";
 import { getDb } from "@/lib/db";
 import { getBuilding, getCommunity, syncTasks } from "@/lib/db/queries";
-import { buildings, communities, fixTasks, scans, type CommunityType, type FixNote, type FixStatus } from "@/lib/db/schema";
+import { buildings, communities, fixTasks, scans, type CommunityType, type FixNote, type FixStatus, type Responsibility } from "@/lib/db/schema";
 import { SAMPLE_REPORT, SAMPLE_STAGES } from "@/lib/db/seed";
 import { PACK_OPTIONS } from "@/lib/rules";
 import { isUserSettable } from "@/lib/tasks";
@@ -141,7 +141,10 @@ export async function loadSampleReport(buildingId: string) {
   redirect(`/report/${scan.id}`);
 }
 
-export type TaskUpdate = { status?: string; owner?: string; note?: string };
+export type TaskUpdate = { status?: string; owner?: string; note?: string; responsibility?: string };
+
+const RESPONSIBILITIES: Responsibility[] = ["HOA", "Owner", "Unclear"];
+const RESP_WORDS: Record<Responsibility, string> = { HOA: "HOA", Owner: "Homeowner", Unclear: "Unclear" };
 
 export async function updateTask(taskId: string, update: TaskUpdate): Promise<FormState> {
   const db = await getDb();
@@ -151,7 +154,7 @@ export async function updateTask(taskId: string, update: TaskUpdate): Promise<Fo
   const patch: Partial<typeof fixTasks.$inferInsert> = { updatedAt: new Date() };
   const notes: FixNote[] = [...task.notes];
   const when = new Date().toISOString();
-  const by = (update.owner ?? task.owner).trim() || "Resident";
+  const by = (update.owner ?? task.owner).trim() || "In app";
 
   if (update.status !== undefined && update.status !== task.status) {
     if (!isUserSettable(update.status)) {
@@ -170,6 +173,13 @@ export async function updateTask(taskId: string, update: TaskUpdate): Promise<Fo
     notes.push({ text: note ? `${label}: ${note}` : label, at: when, by });
   } else if (note) {
     notes.push({ text: note, at: when, by });
+  }
+  if (update.responsibility !== undefined && update.responsibility !== task.responsibility) {
+    if (!RESPONSIBILITIES.includes(update.responsibility as Responsibility)) {
+      return { ok: false, error: "Pick HOA, Homeowner or Unclear." };
+    }
+    patch.responsibility = update.responsibility as Responsibility;
+    notes.push({ text: `Responsibility: ${RESP_WORDS[patch.responsibility]}`, at: when, by });
   }
   if (update.owner !== undefined) patch.owner = update.owner.trim().slice(0, 80);
   patch.notes = notes;

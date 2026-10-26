@@ -151,7 +151,7 @@ async function ReportView({ params }: { params: PageProps<"/report/[scanId]">["p
                     </a>
                     <p className="text-sm text-muted">{f.why}</p>
                     <div className="mt-1.5">
-                      <FixTags fix={f} />
+                      <FixTags fix={f} owner={taskByRule.get(taskRuleId(f))?.responsibility} />
                     </div>
                   </div>
                 </li>
@@ -203,7 +203,7 @@ async function ReportView({ params }: { params: PageProps<"/report/[scanId]">["p
                 <h3 className="font-bold text-ink">{f.title}</h3>
                 <p className="mt-0.5 text-sm text-muted">{f.why}</p>
                 <div className="mt-2 flex flex-wrap items-center gap-2">
-                  <FixTags fix={f} />
+                  <FixTags fix={f} owner={t?.responsibility} />
                   {f.rule_ids.map((id) => (
                     <a key={id} href={`#rule-${id}`} className="font-mono text-xs text-brand underline underline-offset-2">
                       {id}
@@ -212,7 +212,7 @@ async function ReportView({ params }: { params: PageProps<"/report/[scanId]">["p
                 </div>
                 <div className="mt-3">
                   <FixTracker
-                    task={t ? { id: t.id, status: t.status, owner: t.owner, notes: t.notes } : null}
+                    task={t ? { id: t.id, status: t.status, responsibility: t.responsibility, owner: t.owner, notes: t.notes } : null}
                   />
                 </div>
               </li>
