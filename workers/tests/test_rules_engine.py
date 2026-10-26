@@ -51,8 +51,13 @@ def R(
 
 def P(*rules: dict[str, Any]) -> RulePack:
     return RulePack.model_validate(
-        {"pack_id": "test", "version": "1", "checked_on": "2026-10-26", "zones": ZONES,
-         "rules": list(rules)}
+        {
+            "pack_id": "test",
+            "version": "1",
+            "checked_on": "2026-10-26",
+            "zones": ZONES,
+            "rules": list(rules),
+        }
     )
 
 
@@ -107,8 +112,14 @@ def test_absent_within_unknown_distance_needs_review() -> None:
 
 
 def test_absent_within_band_with_inner_edge() -> None:
-    pack = P(R("Z2-01", ["dead_vegetation"], {"type": "absent_within", "ft": 100, "min_ft": 30},
-               zone="Z2"))
+    pack = P(
+        R(
+            "Z2-01",
+            ["dead_vegetation"],
+            {"type": "absent_within", "ft": 100, "min_ft": 30},
+            zone="Z2",
+        )
+    )
     assert one([H("d", "dead_vegetation", distance_ft=rng(40, 50))], pack).status == "fail"
     assert one([H("d", "dead_vegetation", distance_ft=rng(10, 20))], pack).status == "pass"
     assert one([H("d", "dead_vegetation", distance_ft=rng(25, 35))], pack).status == "needs-review"
@@ -141,8 +152,9 @@ def test_exclude_list_is_respected() -> None:
 
 # ----------------------------------------------------------------------------- eave strip
 
-EAVE = P(R("E", ["vegetation_any"],
-           {"type": "absent_within", "ft": "eave", "min_ft": 1, "max_ft": 5}))
+EAVE = P(
+    R("E", ["vegetation_any"], {"type": "absent_within", "ft": "eave", "min_ft": 1, "max_ft": 5})
+)
 
 
 def test_eave_strip_inside_low_limit_fails() -> None:
@@ -164,13 +176,19 @@ def test_eave_strip_beyond_high_limit_passes() -> None:
 
 def test_eave_is_clamped_to_min_and_max() -> None:
     # Eave 8-9 ft clamps to 5 ft: a shrub at 4-4.5 ft is inside, 5.5 ft is outside.
-    assert one([H("s", "shrub", distance_ft=rng(4, 4.5))], EAVE,
-               eave_depth_ft=rng(8, 9)).status == "fail"
-    assert one([H("s", "shrub", distance_ft=rng(5.5, 6))], EAVE,
-               eave_depth_ft=rng(8, 9)).status == "pass"
+    assert (
+        one([H("s", "shrub", distance_ft=rng(4, 4.5))], EAVE, eave_depth_ft=rng(8, 9)).status
+        == "fail"
+    )
+    assert (
+        one([H("s", "shrub", distance_ft=rng(5.5, 6))], EAVE, eave_depth_ft=rng(8, 9)).status
+        == "pass"
+    )
     # Eave 0.3-0.5 ft clamps up to the 1 ft minimum strip.
-    assert one([H("s", "shrub", distance_ft=rng(0.6, 0.9))], EAVE,
-               eave_depth_ft=rng(0.3, 0.5)).status == "fail"
+    assert (
+        one([H("s", "shrub", distance_ft=rng(0.6, 0.9))], EAVE, eave_depth_ft=rng(0.3, 0.5)).status
+        == "fail"
+    )
 
 
 def test_no_eave_measurement_needs_review_within_max() -> None:
@@ -183,19 +201,44 @@ def test_no_eave_measurement_needs_review_within_max() -> None:
 
 # ----------------------------------------------------------------------------- min_clearance
 
-CHIMNEY = P(R("ALL-01", ["tree", "tree_branch"],
-              {"type": "min_clearance", "ft": 10, "reference": "chimney"}, zone="ALL"))
-WINDOW = P(R("Z0-09", ["vegetation_any"],
-             {"type": "min_clearance", "ft": 2, "reference": "window_door_vent"}, zone="ALL"))
-TANK = P(R("Z12-01", ["propane_tank", "vegetation_any"],
-           {"type": "min_clearance", "ft": 20, "reference": "propane_tank"}, zone="Z12"))
-WALL = P(R("Z0-07", ["tree_branch"], {"type": "min_clearance", "ft": 1, "reference": "wall"},
-           zone="Z0"))
+CHIMNEY = P(
+    R(
+        "ALL-01",
+        ["tree", "tree_branch"],
+        {"type": "min_clearance", "ft": 10, "reference": "chimney"},
+        zone="ALL",
+    )
+)
+WINDOW = P(
+    R(
+        "Z0-09",
+        ["vegetation_any"],
+        {"type": "min_clearance", "ft": 2, "reference": "window_door_vent"},
+        zone="ALL",
+    )
+)
+TANK = P(
+    R(
+        "Z12-01",
+        ["propane_tank", "vegetation_any"],
+        {"type": "min_clearance", "ft": 20, "reference": "propane_tank"},
+        zone="Z12",
+    )
+)
+WALL = P(
+    R("Z0-07", ["tree_branch"], {"type": "min_clearance", "ft": 1, "reference": "wall"}, zone="Z0")
+)
 
 
 def test_min_clearance_uses_clearance_to_matching_reference() -> None:
-    br = H("b", "tree_branch", "Oak branch", distance_ft=rng(0, 1), clearance_ft=rng(4, 6),
-           clearance_to="chimney")
+    br = H(
+        "b",
+        "tree_branch",
+        "Oak branch",
+        distance_ft=rng(0, 1),
+        clearance_ft=rng(4, 6),
+        clearance_to="chimney",
+    )
     r = one([br], CHIMNEY)
     assert r.status == "fail"
     assert r.reason == "Oak branch measured 4–6 ft from the chimney, inside the 10 ft minimum."
@@ -220,8 +263,14 @@ def test_min_clearance_compound_reference() -> None:
 
 
 def test_min_clearance_reference_object_uses_its_clearance() -> None:
-    tank = H("t", "propane_tank", "Propane tank", distance_ft=rng(15, 18),
-             clearance_ft=rng(12, 15), clearance_to="vegetation")
+    tank = H(
+        "t",
+        "propane_tank",
+        "Propane tank",
+        distance_ft=rng(15, 18),
+        clearance_ft=rng(12, 15),
+        clearance_to="vegetation",
+    )
     r = one([tank], TANK)
     assert r.status == "fail" and r.hazard_ids == ["t"]
     unmeasured = H("t", "propane_tank", distance_ft=rng(15, 18))
@@ -260,8 +309,13 @@ def test_max_height_respects_zone_band() -> None:
 # ----------------------------------------------------------------------------- present
 
 ROOF = P(R("ALL-02", ["roof_debris"], {"type": "present", "location": "roof"}, zone="ALL"))
-DECK = P(R("Z1-05", ["vegetation_any", "woodpile"],
-           {"type": "present", "location": "under_or_adjacent_deck_balcony_stairs"}))
+DECK = P(
+    R(
+        "Z1-05",
+        ["vegetation_any", "woodpile"],
+        {"type": "present", "location": "under_or_adjacent_deck_balcony_stairs"},
+    )
+)
 
 
 def test_present_fails_on_medium_and_reviews_on_low() -> None:
@@ -301,8 +355,9 @@ def test_manual_review_with_reach() -> None:
 
 
 def test_proposed_violation_is_review_with_wording() -> None:
-    pack = P(R("Z0-01", ["wood_mulch"], {"type": "absent_within", "ft": 5}, zone="Z0",
-               status="proposed"))
+    pack = P(
+        R("Z0-01", ["wood_mulch"], {"type": "absent_within", "ft": 5}, zone="Z0", status="proposed")
+    )
     r = one([H("m", "wood_mulch", "Bark mulch", distance_ft=rng(0, 0.5))], pack)
     assert r.status == "needs-review"
     assert r.reason.startswith("Would not meet the proposed rule")
@@ -310,8 +365,15 @@ def test_proposed_violation_is_review_with_wording() -> None:
 
 
 def test_guidance_violation_is_review_with_wording() -> None:
-    pack = P(R("Z0-20", ["vehicle_or_boat"], {"type": "absent_within", "ft": 5}, zone="Z0",
-               status="guidance"))
+    pack = P(
+        R(
+            "Z0-20",
+            ["vehicle_or_boat"],
+            {"type": "absent_within", "ft": 5},
+            zone="Z0",
+            status="guidance",
+        )
+    )
     r = one([H("v", "vehicle_or_boat", distance_ft=rng(2, 3))], pack)
     assert r.status == "needs-review" and r.reason.startswith("Below recommended practice")
 
@@ -334,8 +396,9 @@ def test_unfilmed_sides_noted_in_pass_and_cap_score() -> None:
     res = evaluate([], FIREWOOD_30, eave_depth_ft=None, observed_sides={"N", "E"})
     r = res.results[0]
     assert r.status == "pass"
-    assert r.reason == ("No woodpile seen within 30 ft on the filmed sides; "
-                        "the S and W sides were not filmed.")
+    assert r.reason == (
+        "No woodpile seen within 30 ft on the filmed sides; the S and W sides were not filmed."
+    )
     assert res.score.unfilmed_sides == ["S", "W"]
     assert res.score.score == 80 and res.score.label == "A few fixes needed"
 
@@ -356,8 +419,16 @@ def test_all_sides_filmed_no_cap_or_note() -> None:
 
 
 def _res(zone: str, status: str, rule_status: str = "adopted", rid: str = "X") -> RuleResult:
-    return RuleResult(rule_id=rid, title="t", zone=zone, rule_status=rule_status, status=status,
-                      reason="r", citation_url="https://example.com", citation_label="c")
+    return RuleResult(
+        rule_id=rid,
+        title="t",
+        zone=zone,
+        rule_status=rule_status,
+        status=status,
+        reason="r",
+        citation_url="https://example.com",
+        citation_label="c",
+    )
 
 
 def test_score_penalties_by_zone() -> None:
@@ -368,8 +439,11 @@ def test_score_penalties_by_zone() -> None:
 
 
 def test_score_ignores_proposed_and_guidance() -> None:
-    results = [_res("Z0", "needs-review", "proposed"), _res("Z0", "needs-review", "guidance"),
-               _res("Z0", "pass", "proposed")]
+    results = [
+        _res("Z0", "needs-review", "proposed"),
+        _res("Z0", "needs-review", "guidance"),
+        _res("Z0", "pass", "proposed"),
+    ]
     block = compute_score(results, [])
     assert block.score == 100
     assert (block.zone0_met, block.zone0_total) == (1, 2)
@@ -384,8 +458,14 @@ def test_score_floor_and_cap() -> None:
 
 @pytest.mark.parametrize(
     ("score", "label"),
-    [(100, "In good shape"), (90, "In good shape"), (89, "A few fixes needed"),
-     (75, "A few fixes needed"), (74, "Needs work"), (0, "Needs work")],
+    [
+        (100, "In good shape"),
+        (90, "In good shape"),
+        (89, "A few fixes needed"),
+        (75, "A few fixes needed"),
+        (74, "Needs work"),
+        (0, "Needs work"),
+    ],
 )
 def test_score_labels(score: int, label: str) -> None:
     assert score_label(score) == label
@@ -396,13 +476,16 @@ def test_score_labels(score: int, label: str) -> None:
 
 def test_results_ordered_by_status_zone_id() -> None:
     pack = P(
-        R("Z2-01", ["dead_vegetation"], {"type": "absent_within", "ft": 100, "min_ft": 30},
-          zone="Z2"),
+        R(
+            "Z2-01",
+            ["dead_vegetation"],
+            {"type": "absent_within", "ft": 100, "min_ft": 30},
+            zone="Z2",
+        ),
         R("Z1-02", ["woodpile"], {"type": "absent_within", "ft": 30}),
         R("Z1-01", ["woodpile"], {"type": "absent_within", "ft": 30}),
         R("ALL-01", ["shrub"], {"type": "manual_review"}, zone="ALL"),
-        R("Z0-01", ["woodpile"], {"type": "absent_within", "ft": 5}, zone="Z0",
-          status="proposed"),
+        R("Z0-01", ["woodpile"], {"type": "absent_within", "ft": 5}, zone="Z0", status="proposed"),
         R("Z12-01", ["outbuilding"], {"type": "absent_within", "ft": 30}, zone="Z12"),
     )
     hz = [H("w", "woodpile", distance_ft=rng(1, 2)), H("s", "shrub", distance_ft=rng(1, 2))]
@@ -422,17 +505,30 @@ def _walkaround() -> list[Hazard]:
     return [
         H("h-wood_mulch-0", "wood_mulch", "Bark mulch", distance_ft=rng(0, 0.5)),
         H("h-woodpile-0", "woodpile", "Firewood", distance_ft=rng(8, 11)),
-        H("h-shrub-0", "shrub", "Juniper", distance_ft=rng(0.5, 1.5),
-          clearance_ft=rng(0.5, 1.5), clearance_to="window"),
+        H(
+            "h-shrub-0",
+            "shrub",
+            "Juniper",
+            distance_ft=rng(0.5, 1.5),
+            clearance_ft=rng(0.5, 1.5),
+            clearance_to="window",
+        ),
         H("h-fence_attached-0", "fence_attached", "Wood fence", distance_ft=rng(0, 0.3)),
-        H("h-propane_tank-0", "propane_tank", "Propane tank", distance_ft=rng(18, 21),
-          clearance_ft=rng(12, 15), clearance_to="vegetation"),
+        H(
+            "h-propane_tank-0",
+            "propane_tank",
+            "Propane tank",
+            distance_ft=rng(18, 21),
+            clearance_ft=rng(12, 15),
+            clearance_to="vegetation",
+        ),
     ]
 
 
 def test_us_ca_smoke(us_ca: RulePack) -> None:
-    res = evaluate(_walkaround(), us_ca, eave_depth_ft=rng(1.5, 2),
-                   observed_sides={"N", "E", "S", "W"})
+    res = evaluate(
+        _walkaround(), us_ca, eave_depth_ft=rng(1.5, 2), observed_sides={"N", "E", "S", "W"}
+    )
     by_id = {r.rule_id: r for r in res.results}
     assert len(by_id) == len(us_ca.rules)
 
@@ -458,8 +554,11 @@ def test_us_ca_smoke(us_ca: RulePack) -> None:
     s = res.score
     assert s.fails == 2
     assert s.fails + s.reviews + s.passes == len(us_ca.rules)
-    assert 0 <= s.zone0_met <= s.zone0_total == sum(
-        r.zone == "Z0" and r.status == "proposed" for r in us_ca.rules
+    assert (
+        0
+        <= s.zone0_met
+        <= s.zone0_total
+        == sum(r.zone == "Z0" and r.status == "proposed" for r in us_ca.rules)
     )
     assert s.score == 100 - 8 - 8 - 5 - 5  # Z1-04, Z12-01 fail; ALL-03, ALL-04 review
     assert s.label == "Needs work"

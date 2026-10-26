@@ -36,8 +36,7 @@ def _gray(path: Path) -> np.ndarray:
 def sharpness(gray: np.ndarray) -> float:
     """Variance of the Laplacian: low for blurry frames."""
     lap = (
-        -4 * gray[1:-1, 1:-1]
-        + gray[:-2, 1:-1] + gray[2:, 1:-1] + gray[1:-1, :-2] + gray[1:-1, 2:]
+        -4 * gray[1:-1, 1:-1] + gray[:-2, 1:-1] + gray[2:, 1:-1] + gray[1:-1, :-2] + gray[1:-1, 2:]
     )
     return float(lap.var())
 

@@ -1,4 +1,4 @@
-import type { WorkerScan } from "./report-types";
+import type { BuildingNote, WorkerScan } from "./report-types";
 
 // Worker HTTP API (docs/contracts/README.md). Server-side only: the token never reaches the browser.
 
@@ -64,6 +64,26 @@ export function passcodeOk(given: string | null): boolean {
   let diff = 0;
   for (let i = 0; i < want.length; i++) diff |= want.charCodeAt(i) ^ given.charCodeAt(i);
   return diff === 0;
+}
+
+/** Address research (Muse Spark + public map data). Throws with a user-facing message. */
+export async function workerResearch(address: string): Promise<BuildingNote> {
+  let res: Response;
+  try {
+    res = await workerFetch(
+      "/research",
+      { method: "POST", body: JSON.stringify({ address }), headers: { "content-type": "application/json" } },
+      90_000,
+    );
+  } catch {
+    throw new Error("The research service isn't reachable right now.");
+  }
+  if (res.status === 429) {
+    const body = (await res.json().catch(() => ({}))) as { detail?: string };
+    throw new Error(body.detail ?? "The AI budget is used up for today.");
+  }
+  if (!res.ok) throw new Error(`Research failed (${res.status}).`);
+  return (await res.json()) as BuildingNote;
 }
 
 export async function getWorkerScan(workerScanId: string): Promise<WorkerScan> {

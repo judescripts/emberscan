@@ -11,6 +11,7 @@ import { buildings, communities, fixTasks, scans, type CommunityType, type FixNo
 import { SAMPLE_REPORT, SAMPLE_STAGES } from "@/lib/db/seed";
 import { PACK_OPTIONS } from "@/lib/rules";
 import { isUserSettable } from "@/lib/tasks";
+import { workerResearch } from "@/lib/worker";
 
 // Hackathon scope: no accounts yet, so actions validate input but not identity.
 
@@ -81,15 +82,35 @@ export async function saveBuilding(_prev: FormState, fd: FormData): Promise<Form
   if (eaveMode === "known" && (!Number.isFinite(eaveFt) || (eaveFt as number) <= 0 || (eaveFt as number) > 10)) {
     return { ok: false, error: "Enter the eave depth in feet (for example 1.5), or choose “Measure from video”." };
   }
+  const address = text(fd, "address", 200);
   const db = await getDb();
   if (id) {
-    await db.update(buildings).set({ label, units, eaveMode, eaveFt }).where(eq(buildings.id, id));
+    const before = await getBuilding(db, id);
+    // A new address makes the old research note wrong; clear it so the card researches again.
+    const note = before && before.address === address ? before.note : null;
+    await db.update(buildings).set({ label, units, address, note, eaveMode, eaveFt }).where(eq(buildings.id, id));
   } else {
     if (!(await getCommunity(db, communityId))) return { ok: false, error: "Community not found." };
-    await db.insert(buildings).values({ communityId, label, units, eaveMode, eaveFt });
+    await db.insert(buildings).values({ communityId, label, units, address, eaveMode, eaveFt });
   }
   refresh();
   return { ok: true, message: id ? "Building saved." : "Building added." };
+}
+
+/** Run the address research agent for a building and store its note. */
+export async function researchBuilding(id: string): Promise<FormState> {
+  const db = await getDb();
+  const b = await getBuilding(db, id);
+  if (!b) return { ok: false, error: "Building not found." };
+  if (b.address.length < 5) return { ok: false, error: "Add the building's street address first." };
+  try {
+    const note = await workerResearch(b.address);
+    await db.update(buildings).set({ note }).where(eq(buildings.id, id));
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : "Research failed." };
+  }
+  refresh();
+  return { ok: true, message: "Research note updated." };
 }
 
 export async function deleteBuilding(id: string) {

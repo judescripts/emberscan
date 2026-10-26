@@ -110,11 +110,13 @@ def paper_image() -> np.ndarray:
 def paper_px_to_world() -> np.ndarray:
     """Paper pixel (pu, pv) -> world ground (X, Y): u = (pu + .5)/s, X = -(u - W/2), Y = v."""
     s = PAPER_PX_PER_IN
-    return np.array([
-        [-1 / s, 0, PAGE_W_IN / 2 - 0.5 / s],
-        [0, 1 / s, 0.5 / s],
-        [0, 0, 1],
-    ])
+    return np.array(
+        [
+            [-1 / s, 0, PAGE_W_IN / 2 - 0.5 / s],
+            [0, 1 / s, 0.5 / s],
+            [0, 0, 1],
+        ]
+    )
 
 
 def render(p: np.ndarray, seed: int = 0, hazard_poly: np.ndarray | None = None) -> np.ndarray:
@@ -125,11 +127,13 @@ def render(p: np.ndarray, seed: int = 0, hazard_poly: np.ndarray | None = None) 
     noise = cv2.resize(cv2.GaussianBlur(noise, (0, 0), 1.2), (big_w, big_h))
     base = np.array([60, 95, 135], np.float32)  # brown mulch (BGR)
     img = np.clip(base + noise[..., None] * 35, 0, 255).astype(np.uint8)
-    up = np.diag([SS, SS, 1.0]) @ np.array([[1, 0, 0.5 * (1 - 1 / SS)], [0, 1, 0.5 * (1 - 1 / SS)],
-                                             [0, 0, 1]])
+    up = np.diag([SS, SS, 1.0]) @ np.array(
+        [[1, 0, 0.5 * (1 - 1 / SS)], [0, 1, 0.5 * (1 - 1 / SS)], [0, 0, 1]]
+    )
     pp = up @ p
-    wall = project(pp, np.array([[x, 0.0, 0.0] for x in (-400, 400)] + [[400, 0, 300],
-                                                                        [-400, 0, 300]]))
+    wall = project(
+        pp, np.array([[x, 0.0, 0.0] for x in (-400, 400)] + [[400, 0, 300], [-400, 0, 300]])
+    )
     cv2.fillPoly(img, [np.round(wall).astype(np.int32)], (170, 200, 215))
     hmat = ground_to_image(pp) @ paper_px_to_world()
     paper = paper_image()
@@ -151,8 +155,14 @@ def sam_mask(p: np.ndarray, poly_xyz: np.ndarray, down: int = 2) -> dict[str, An
     ys, xs = np.nonzero(full)
     x0, y0, x1, y1 = xs.min(), ys.min(), xs.max() + 1, ys.max() + 1
     crop = full[y0:y1, x0:x1].astype(np.float32)
-    small = cv2.resize(crop, (max(1, (x1 - x0) // down), max(1, (y1 - y0) // down)),
-                       interpolation=cv2.INTER_AREA) > 0.5
+    small = (
+        cv2.resize(
+            crop,
+            (max(1, (x1 - x0) // down), max(1, (y1 - y0) // down)),
+            interpolation=cv2.INTER_AREA,
+        )
+        > 0.5
+    )
     return {"rle": encode_rle(small), "bounds": [float(x0), float(y0), float(x1), float(y1)]}
 
 

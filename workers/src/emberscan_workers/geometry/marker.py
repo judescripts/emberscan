@@ -383,4 +383,3 @@ def estimate_focal_px(
     if f_std > FOCAL_MAX_REL_STD * f:
         return None
     return f, f_std
-

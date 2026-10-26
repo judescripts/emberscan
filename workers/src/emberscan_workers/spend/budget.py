@@ -34,7 +34,8 @@ class Budget:
     daily_usd: float = DEFAULT_DAILY_USD
     total_usd: float = DEFAULT_TOTAL_USD
     max_concurrent: int = DEFAULT_MAX_CONCURRENT
-    _running: set[str] = field(default_factory=set)
+    _running: dict[str, float] = field(default_factory=dict)  # id -> reserved USD
+    _scans: set[str] = field(default_factory=set)  # the ids that count toward concurrency
     _lock: threading.Lock = field(default_factory=threading.Lock)
 
     @classmethod
@@ -68,7 +69,7 @@ class Budget:
     def status(self) -> dict[str, float | int]:
         with self._lock:
             day, total = self._spent(time.time())
-            held = len(self._running) * self.per_run_usd
+            held = sum(self._running.values())
         return {
             "spent_24h_usd": round(day, 4),
             "spent_total_usd": round(total, 4),
@@ -76,18 +77,19 @@ class Budget:
             "daily_limit_usd": self.daily_usd,
             "total_limit_usd": self.total_usd,
             "per_run_limit_usd": self.per_run_usd,
-            "running": len(self._running),
+            "running": len(self._scans),
             "max_concurrent": self.max_concurrent,
             "scans_left_today": max(0, int((self.daily_usd - day - held) // self.per_run_usd)),
         }
 
-    def reserve(self, scan_id: str) -> None:
-        """Hold one scan's worst-case cost, or raise BudgetExhausted."""
+    def reserve(self, scan_id: str, amount_usd: float | None = None, is_scan: bool = True) -> None:
+        """Hold a run's worst-case cost (default: one scan), or raise BudgetExhausted."""
+        amount = self.per_run_usd if amount_usd is None else amount_usd
         with self._lock:
-            if len(self._running) >= self.max_concurrent:
+            if is_scan and len(self._scans) >= self.max_concurrent:
                 raise BudgetExhausted("Too many scans running right now; try again in a minute.")
             day, total = self._spent(time.time())
-            held = (len(self._running) + 1) * self.per_run_usd
+            held = sum(self._running.values()) + amount
             if day + held > self.daily_usd:
                 raise BudgetExhausted(
                     f"Daily scan budget reached (${day:.2f} of ${self.daily_usd:.2f} in 24 h)."
@@ -96,8 +98,11 @@ class Budget:
                 raise BudgetExhausted(
                     f"Total scan budget reached (${total:.2f} of ${self.total_usd:.2f})."
                 )
-            self._running.add(scan_id)
+            self._running[scan_id] = amount
+            if is_scan:
+                self._scans.add(scan_id)
 
     def release(self, scan_id: str) -> None:
         with self._lock:
-            self._running.discard(scan_id)
+            self._running.pop(scan_id, None)
+            self._scans.discard(scan_id)

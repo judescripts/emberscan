@@ -84,14 +84,16 @@ def build_request(concept: str, file_id: str, include_confidence: bool = True) -
         metadata["include_confidence"] = "true"
     return {
         "model": MODEL,
-        "input": [{
-            "type": "message",
-            "role": "user",
-            "content": [
-                {"type": "input_text", "text": concept.strip()},
-                {"type": "input_video", "file_id": file_id},
-            ],
-        }],
+        "input": [
+            {
+                "type": "message",
+                "role": "user",
+                "content": [
+                    {"type": "input_text", "text": concept.strip()},
+                    {"type": "input_video", "file_id": file_id},
+                ],
+            }
+        ],
         "metadata": metadata,
     }
 
@@ -104,7 +106,8 @@ async def parse_events(events: list[dict[str, Any]]) -> dict[str, Any]:
     if not SAM_PARSER.exists():
         raise SamParseError(f"SAM parser not found at {SAM_PARSER}; run npm ci in sam-parser")
     proc = await asyncio.create_subprocess_exec(
-        node, str(SAM_PARSER),
+        node,
+        str(SAM_PARSER),
         stdin=asyncio.subprocess.PIPE,
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.PIPE,

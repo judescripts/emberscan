@@ -29,8 +29,17 @@ pytestmark = [
 
 def test_marker_found_in_place_the_marker_clip(tmp_path: Path) -> None:
     subprocess.run(
-        ["ffmpeg", "-v", "error", "-y", "-i", str(CLIP), "-vf", "fps=3",
-         str(tmp_path / "f_%03d.png")],
+        [
+            "ffmpeg",
+            "-v",
+            "error",
+            "-y",
+            "-i",
+            str(CLIP),
+            "-vf",
+            "fps=3",
+            str(tmp_path / "f_%03d.png"),
+        ],
         check=True,
     )
     frames = sorted(tmp_path.glob("f_*.png"))

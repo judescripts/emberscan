@@ -58,10 +58,18 @@ def _run(args: list[str]) -> subprocess.CompletedProcess[str]:
 
 
 def probe(video: Path) -> VideoInfo:
-    out = _run([
-        _bin("ffprobe"), "-v", "error", "-print_format", "json",
-        "-show_streams", "-show_format", str(video),
-    ]).stdout
+    out = _run(
+        [
+            _bin("ffprobe"),
+            "-v",
+            "error",
+            "-print_format",
+            "json",
+            "-show_streams",
+            "-show_format",
+            str(video),
+        ]
+    ).stdout
     data = json.loads(out)
     streams = data.get("streams", [])
     v = next((s for s in streams if s.get("codec_type") == "video"), None)
@@ -105,12 +113,33 @@ def normalize(
     dst.parent.mkdir(parents=True, exist_ok=True)
     # ffmpeg auto-rotates by default; scale keeps aspect and an even width.
     vf = f"scale=-2:{height}" if fps is None else f"fps={fps},scale=-2:{height}"
-    _run([
-        _bin("ffmpeg"), "-v", "error", "-y", "-i", str(src),
-        "-vf", vf, "-c:v", "libx264", "-preset", "veryfast", "-crf", "23",
-        "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "96k", "-movflags", "+faststart",
-        str(dst),
-    ])
+    _run(
+        [
+            _bin("ffmpeg"),
+            "-v",
+            "error",
+            "-y",
+            "-i",
+            str(src),
+            "-vf",
+            vf,
+            "-c:v",
+            "libx264",
+            "-preset",
+            "veryfast",
+            "-crf",
+            "23",
+            "-pix_fmt",
+            "yuv420p",
+            "-c:a",
+            "aac",
+            "-b:a",
+            "96k",
+            "-movflags",
+            "+faststart",
+            str(dst),
+        ]
+    )
     return probe(dst)
 
 
@@ -123,10 +152,21 @@ def extract_frames(
     out_dir.mkdir(parents=True, exist_ok=True)
     for old in out_dir.glob("frame_*.jpg"):
         old.unlink()
-    _run([
-        _bin("ffmpeg"), "-v", "error", "-y", "-i", str(video),
-        "-vf", f"fps={fps}", "-q:v", str(quality), str(out_dir / "frame_%06d.jpg"),
-    ])
+    _run(
+        [
+            _bin("ffmpeg"),
+            "-v",
+            "error",
+            "-y",
+            "-i",
+            str(video),
+            "-vf",
+            f"fps={fps}",
+            "-q:v",
+            str(quality),
+            str(out_dir / "frame_%06d.jpg"),
+        ]
+    )
     paths = sorted(out_dir.glob("frame_*.jpg"))
     return [FrameRef(i, round(i * 1000 / fps), p) for i, p in enumerate(paths)]
 
@@ -136,8 +176,22 @@ def extract_audio(video: Path, out_wav: Path) -> Path | None:
     if not probe(video).has_audio:
         return None
     out_wav.parent.mkdir(parents=True, exist_ok=True)
-    _run([
-        _bin("ffmpeg"), "-v", "error", "-y", "-i", str(video),
-        "-vn", "-ac", "1", "-ar", "16000", "-c:a", "pcm_s16le", str(out_wav),
-    ])
+    _run(
+        [
+            _bin("ffmpeg"),
+            "-v",
+            "error",
+            "-y",
+            "-i",
+            str(video),
+            "-vn",
+            "-ac",
+            "1",
+            "-ar",
+            "16000",
+            "-c:a",
+            "pcm_s16le",
+            str(out_wav),
+        ]
+    )
     return out_wav

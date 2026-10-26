@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Suspense } from "react";
+import { BuildingNotePanel, ZoneChip } from "@/components/building-note";
 import { ButtonLink, Card, PageHeader, Pill, SampleBadge, ScoreBadge, ShortDisclaimer, Skeleton } from "@/components/ui";
 import { currentContext } from "@/lib/current";
 import { latestDone, listBuildings, listScans } from "@/lib/db/queries";
@@ -83,6 +84,12 @@ async function Buildings() {
                   <div className="min-w-0 flex-1">
                     <h2 className="font-bold text-ink">{b.label}</h2>
                     {b.units && <p className="text-sm text-muted">Units {b.units}</p>}
+                    {b.address && <p className="text-sm text-muted">{b.address}</p>}
+                    {b.note?.hazard_class && (
+                      <p className="mt-1">
+                        <ZoneChip note={b.note} />
+                      </p>
+                    )}
                     {report ? (
                       <p className="mt-1 flex flex-wrap items-center gap-1.5 text-sm font-semibold">
                         {scoreLabel(report.score.score)}
@@ -109,6 +116,9 @@ async function Buildings() {
                     {summary.closest && <p className="text-muted">Closest: {summary.closest}</p>}
                     {cite && <p className="text-xs text-muted">Top issue: {cite}</p>}
                   </div>
+                )}
+                {b.address && (
+                  <BuildingNotePanel buildingId={b.id} address={b.address} note={b.note ?? null} compact />
                 )}
                 {running && (
                   <Link href={`/scan/${running.id}`} className="text-sm font-semibold text-brand underline underline-offset-2">

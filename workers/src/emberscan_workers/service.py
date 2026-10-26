@@ -17,12 +17,14 @@ from pathlib import Path
 
 from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, UploadFile
 from fastapi.responses import FileResponse
+from pydantic import BaseModel, Field
 
 from .contracts import Range, Report
 from .hazards import BY_CLASS, CORE
 from .meta import MetaClient
 from .pipeline import ScanJob, run_scan
-from .spend import Budget, BudgetExhausted
+from .research import research_address_safe
+from .spend import Budget, BudgetExhausted, SpendLedger
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 
@@ -50,6 +52,7 @@ SCAN_ID = re.compile(r"^[a-z0-9-]{8,64}$")
 app = FastAPI(title="EmberScan worker", version="0.1.0")
 JOBS: dict[str, ScanJob] = {}
 BUDGET = Budget.from_env(DATA_DIR)
+RESEARCH_LIMIT_USD = float(os.environ.get("SPEND_LIMIT_USD_PER_RESEARCH", "0.05"))
 
 
 def require_token(authorization: str | None = Header(default=None)) -> None:
@@ -98,6 +101,26 @@ async def health() -> dict:
 @app.get("/budget", dependencies=[Depends(require_token)])
 async def budget() -> dict:
     return BUDGET.status()
+
+
+class ResearchRequest(BaseModel):
+    address: str = Field(min_length=5, max_length=200)
+
+
+@app.post("/research", dependencies=[Depends(require_token)])
+async def research(req: ResearchRequest) -> dict:
+    """Address research note (Muse Spark + public map data). Synchronous, ~10-30 s."""
+    run_id = f"research-{uuid.uuid4().hex[:12]}"
+    try:
+        BUDGET.reserve(run_id, RESEARCH_LIMIT_USD, is_scan=False)
+    except BudgetExhausted as e:
+        raise HTTPException(429, str(e)) from e
+    try:
+        ledger = SpendLedger(run_id, RESEARCH_LIMIT_USD, DATA_DIR / run_id / "spend.jsonl")
+        note = await research_address_safe(req.address.strip(), ledger)
+        return note.model_dump(mode="json")
+    finally:
+        BUDGET.release(run_id)
 
 
 @app.post("/scans", status_code=202, dependencies=[Depends(require_token)])

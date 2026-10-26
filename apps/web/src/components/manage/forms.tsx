@@ -103,6 +103,7 @@ export interface BuildingValues {
   units: string;
   eaveMode: "video" | "known";
   eaveFt: number | null;
+  address: string;
 }
 
 export function BuildingForm({ values, onDone }: { values: BuildingValues; onDone?: () => void }) {
@@ -130,6 +131,24 @@ export function BuildingForm({ values, onDone }: { values: BuildingValues; onDon
           </label>
           <input id={`${f}-units`} name="units" defaultValue={values.units} maxLength={120} className={cx(inputClass, "mt-1")} placeholder="9, 10, 11, 12" />
         </div>
+      </div>
+      <div>
+        <label htmlFor={`${f}-address`} className="text-sm font-semibold text-ink">
+          Street address <span className="font-normal text-muted">(optional)</span>
+        </label>
+        <input
+          id={`${f}-address`}
+          name="address"
+          defaultValue={values.address}
+          maxLength={200}
+          autoComplete="street-address"
+          className={cx(inputClass, "mt-1")}
+          placeholder="28422 Constellation Rd, Valencia, CA 91355"
+          aria-describedby={`${f}-address-help`}
+        />
+        <p id={`${f}-address-help`} className="mt-1 text-xs text-muted">
+          EmberScan&apos;s research agent looks it up in public map data: fire hazard zone, which law applies, recent fires nearby.
+        </p>
       </div>
       <fieldset>
         <legend className="text-sm font-semibold text-ink">Eave depth</legend>
@@ -239,7 +258,7 @@ export function AddBuilding({ communityId }: { communityId: string }) {
   return (
     <BuildingForm
       key={n}
-      values={{ communityId, label: "", units: "", eaveMode: "video", eaveFt: null }}
+      values={{ communityId, label: "", units: "", eaveMode: "video", eaveFt: null, address: "" }}
       onDone={() => setN((x) => x + 1)}
     />
   );

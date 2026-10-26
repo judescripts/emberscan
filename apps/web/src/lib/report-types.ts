@@ -120,6 +120,27 @@ export interface Report {
 /** Worker GET /scans/{id} response (docs/contracts/README.md). */
 export type WorkerScanStatus = "queued" | "processing" | "done" | "failed";
 
+/** Address research note from the worker's POST /research (workers/.../research.py). */
+export interface BuildingNote {
+  address: string;
+  matched_address: string | null;
+  lat: number | null;
+  lon: number | null;
+  county: string | null;
+  city: string | null;
+  hazard_class: string | null;
+  responsibility: string | null;
+  summary: string;
+  facts: { label: string; value: string; source_id: string }[];
+  to_check: string[];
+  sources: { id: string; name: string; url: string }[];
+  trace: AgentStep[];
+  model: string | null;
+  cost_usd: number;
+  generated_at: string;
+  disclaimer: string;
+}
+
 export interface WorkerStage {
   name: string;
   status: string; // "pending" | "running" | "done" | "failed" | "skipped" (worker-defined)

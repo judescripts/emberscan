@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
+import { BuildingNotePanel } from "@/components/building-note";
 import { AddBuilding, CommunityForm, DeleteCommunity, EditableBuilding } from "@/components/manage/forms";
 import { Card, PageHeader, SampleBadge, ScoreBadge, SectionTitle, Skeleton } from "@/components/ui";
 import { requestDb } from "@/lib/db";
@@ -70,12 +71,13 @@ async function Edit({ params }: { params: PageProps<"/manage/[communityId]">["pa
                 return (
                   <li key={b.id} className="py-3 first:pt-0 last:pb-0">
                     <EditableBuilding
-                      values={{ id: b.id, communityId: c.id, label: b.label, units: b.units, eaveMode: b.eaveMode, eaveFt: b.eaveFt }}
+                      values={{ id: b.id, communityId: c.id, label: b.label, units: b.units, eaveMode: b.eaveMode, eaveFt: b.eaveFt, address: b.address }}
                       summary={
                         <div className="flex items-start gap-3">
                           {scan?.report && <ScoreBadge score={scan.report.score.score} />}
                           <div>
                             <p className="font-semibold text-ink">{b.label}</p>
+                            {b.address && <p className="text-xs text-muted">{b.address}</p>}
                             <p className="text-xs text-muted">
                               {b.units ? `Units ${b.units} · ` : ""}
                               {b.eaveMode === "known" && b.eaveFt ? `Eaves ${b.eaveFt} ft` : "Eaves measured from video"}
@@ -94,6 +96,11 @@ async function Edit({ params }: { params: PageProps<"/manage/[communityId]">["pa
                         </div>
                       }
                     />
+                    {b.address && (
+                      <div className="mt-2">
+                        <BuildingNotePanel buildingId={b.id} address={b.address} note={b.note ?? null} />
+                      </div>
+                    )}
                   </li>
                 );
               })}

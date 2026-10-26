@@ -188,8 +188,12 @@ def _check_absent_within(c: AbsentWithin, h: Hazard, eave: Range | None) -> _Fin
     hi = float(c.ft)
     band = _band(lo, hi)
     if h.distance_ft is None:
-        return _Finding(h, "review", f"{_name(h)} was seen but its distance from the wall "
-                        f"wasn't measured, so it may be inside the {band} ft zone")
+        return _Finding(
+            h,
+            "review",
+            f"{_name(h)} was seen but its distance from the wall "
+            f"wasn't measured, so it may be inside the {band} ft zone",
+        )
     d_lo, d_hi = _bounds(h.distance_ft)
     if d_lo > hi or d_hi < lo:
         return None
@@ -213,8 +217,12 @@ def _check_eave_strip(c: AbsentWithin, h: Hazard, eave: Range | None) -> _Findin
         e_lo, e_hi = _bounds(eave)
         lim_lo, lim_hi = clamp(e_lo), clamp(e_hi)
     if h.distance_ft is None:
-        return _Finding(h, "review", f"{_name(h)} was seen but its distance from the wall "
-                        "wasn't measured, so it may be under the eave")
+        return _Finding(
+            h,
+            "review",
+            f"{_name(h)} was seen but its distance from the wall "
+            "wasn't measured, so it may be under the eave",
+        )
     d_lo, d_hi = _bounds(h.distance_ft)
     if d_lo > lim_hi:
         return None
@@ -224,8 +232,9 @@ def _check_eave_strip(c: AbsentWithin, h: Hazard, eave: Range | None) -> _Findin
         return _Finding(h, "violation", f"{where}, inside the {strip} strip")
     if eave is None:
         return _Finding(h, "review", f"{where}, but the eave depth wasn't measured")
-    return _Finding(h, "review",
-                    f"{where}, at the edge of the {_span(lim_lo, lim_hi)} ft eave strip")
+    return _Finding(
+        h, "review", f"{where}, at the edge of the {_span(lim_lo, lim_hi)} ft eave strip"
+    )
 
 
 def _check_min_clearance(c: MinClearance, h: Hazard) -> _Finding | None:
@@ -236,8 +245,9 @@ def _check_min_clearance(c: MinClearance, h: Hazard) -> _Finding | None:
         where = f"{_name(h)} measured {_fmt(measured)} ft from the {h.clearance_to}"
     elif ref is None or ref == "wall":
         if h.distance_ft is None:
-            return _Finding(h, "review", f"{_name(h)} was seen but its distance from the wall "
-                            "wasn't measured")
+            return _Finding(
+                h, "review", f"{_name(h)} was seen but its distance from the wall wasn't measured"
+            )
         measured = h.distance_ft
         where = f"{_name(h)} measured {_fmt(measured)} ft from the wall"
     elif h.cls == ref:
@@ -248,8 +258,11 @@ def _check_min_clearance(c: MinClearance, h: Hazard) -> _Finding | None:
         measured = h.clearance_ft
         where = f"{_name(h)} has {_fmt(measured)} ft of clearance"
     elif _refers_to(h.clearance_to, ref):
-        return _Finding(h, "review", f"{_name(h)} is near the {_human_ref(ref)} but the "
-                        "clearance wasn't measured")
+        return _Finding(
+            h,
+            "review",
+            f"{_name(h)} is near the {_human_ref(ref)} but the clearance wasn't measured",
+        )
     else:
         return None  # no measurement relates this hazard to the rule's reference
     m_lo, m_hi = _bounds(measured)

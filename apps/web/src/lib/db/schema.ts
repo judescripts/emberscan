@@ -1,5 +1,5 @@
 import { boolean, index, integer, jsonb, pgTable, real, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
-import type { Report, WorkerStage } from "../report-types";
+import type { BuildingNote, Report, WorkerStage } from "../report-types";
 
 export type CommunityType = "HOA" | "Condo" | "Home" | "Commercial";
 export type EaveMode = "video" | "known";
@@ -31,6 +31,9 @@ export const buildings = pgTable(
       .references(() => communities.id, { onDelete: "cascade" }),
     label: text("label").notNull(),
     units: text("units").notNull().default(""),
+    address: text("address").notNull().default(""),
+    // Address research note (worker POST /research): jurisdiction, hazard zone, law, recent fires.
+    note: jsonb("note").$type<BuildingNote>(),
     eaveMode: text("eave_mode").$type<EaveMode>().notNull().default("video"),
     eaveFt: real("eave_ft"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
