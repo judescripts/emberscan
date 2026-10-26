@@ -54,7 +54,11 @@ async function ReportView({ params }: { params: PageProps<"/report/[scanId]">["p
   const isLatest = history.find((s) => s.status === "done" && s.report)?.id === scan.id;
   const z0 = report.score;
   const eave = report.eave_depth_ft
-    ? `Eaves about ${formatRange(report.eave_depth_ft)} deep (measured)`
+    ? report.eave_source === "corner_video"
+      ? `Eaves about ${formatRange(report.eave_depth_ft)} deep (estimated from corner clips, ${report.eave_estimate?.confidence ?? "low"} confidence)`
+      : report.eave_source === "entered"
+        ? `Eaves ${formatRange(report.eave_depth_ft)} deep (entered)`
+        : `Eaves about ${formatRange(report.eave_depth_ft)} deep (measured)`
     : building.eaveMode === "known" && building.eaveFt
       ? `Eaves ${building.eaveFt} ft deep (entered)`
       : "Eave depth not measured";

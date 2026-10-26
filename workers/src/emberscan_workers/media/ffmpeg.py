@@ -143,6 +143,70 @@ def normalize(
     return probe(dst)
 
 
+@dataclass(frozen=True)
+class ClipSpan:
+    """Where one source clip sits inside a joined video."""
+
+    name: str
+    start_s: float
+    duration_s: float
+
+
+def join_clips(
+    clips: list[tuple[str, Path]],
+    dst: Path,
+    max_duration_s: float = MAX_DURATION_S,
+    fps: float = 30.0,
+) -> list[ClipSpan]:
+    """Join several walkaround clips into one H.264 MP4, in order.
+
+    Every clip is re-encoded onto the first clip's canvas (other orientations are scaled to fit
+    and padded), at one frame rate, with an audio track (silence when a clip has none), so the
+    parts can be concatenated losslessly. Returns each clip's span in the joined video.
+    """
+    if not clips:
+        raise ValueError("no clips to join")
+    infos = [probe(p) for _, p in clips]
+    total = sum(i.duration_s for i in infos)
+    if total > max_duration_s:
+        raise MediaError(f"clips total {total:.0f}s; the limit is {max_duration_s:.0f}s")
+    first = infos[0]
+    w, h = (first.width, first.height) if first.rotation % 180 == 0 else (first.height, first.width)
+    scale = 720 / min(w, h)  # same short side as normalize()
+    w, h = int(round(w * scale / 2) * 2), int(round(h * scale / 2) * 2)
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    parts: list[Path] = []
+    spans: list[ClipSpan] = []
+    t = 0.0
+    for i, ((name, src), info) in enumerate(zip(clips, infos, strict=True)):
+        part = dst.parent / f"_part{i:02d}.mp4"
+        vf = (
+            f"scale={w}:{h}:force_original_aspect_ratio=decrease,"
+            f"pad={w}:{h}:(ow-iw)/2:(oh-ih)/2,setsar=1,fps={fps}"
+        )
+        args = [_bin("ffmpeg"), "-v", "error", "-y", "-i", str(src)]
+        if not info.has_audio:
+            args += ["-f", "lavfi", "-i", "anullsrc=channel_layout=mono:sample_rate=48000"]
+        args += ["-vf", vf, "-map", "0:v:0", "-map", "0:a:0" if info.has_audio else "1:a:0"]
+        args += ["-c:v", "libx264", "-preset", "veryfast", "-crf", "23", "-pix_fmt", "yuv420p"]
+        args += ["-c:a", "aac", "-ar", "48000", "-ac", "1", "-b:a", "96k", "-shortest"]
+        args += [str(part)]
+        _run(args)
+        d = probe(part).duration_s
+        spans.append(ClipSpan(name=name, start_s=round(t, 3), duration_s=round(d, 3)))
+        t += d
+        parts.append(part)
+    listing = dst.parent / "_parts.txt"
+    listing.write_text("".join(f"file '{p.name}'\n" for p in parts), encoding="utf-8")
+    _run(
+        [_bin("ffmpeg"), "-v", "error", "-y", "-f", "concat", "-safe", "0", "-i", str(listing)]
+        + ["-c", "copy", "-movflags", "+faststart", str(dst)]
+    )
+    for p in [*parts, listing]:
+        p.unlink(missing_ok=True)
+    return spans
+
+
 def extract_frames(
     video: Path, out_dir: Path, fps: float = 2.0, quality: int = 3
 ) -> list[FrameRef]:

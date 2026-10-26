@@ -7,6 +7,18 @@ import { buttonClass, cx, inputClass } from "../ui";
 
 type Health = "checking" | "online" | "offline";
 
+function sortByName(list: FileList | null): File[] {
+  return [...(list ?? [])].sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
+}
+
+function clipSummary(files: File[]): string {
+  if (!files.length) return "";
+  const mb = files.reduce((s, f) => s + f.size, 0) / 1e6;
+  return files.length === 1
+    ? `Selected: ${files[0].name} (${mb.toFixed(1)} MB)`
+    : `Selected ${files.length} clips (${mb.toFixed(1)} MB): ${files.map((f) => f.name).join(", ")}`;
+}
+
 export function ScanForm({
   buildings,
   initialBuilding,
@@ -16,7 +28,8 @@ export function ScanForm({
 }) {
   const router = useRouter();
   const [buildingId, setBuildingId] = useState(initialBuilding ?? buildings[0]?.id ?? "");
-  const [file, setFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
+  const [corners, setCorners] = useState<File[]>([]);
   const [health, setHealth] = useState<Health>("checking");
   const [uploadPct, setUploadPct] = useState<number | null>(null);
   const [error, setError] = useState<{ message: string; offline: boolean } | null>(null);
@@ -48,11 +61,12 @@ export function ScanForm({
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (!file || !buildingId) return;
+    if (!files.length || !buildingId) return;
     setError(null);
     setUploadPct(0);
     const fd = new FormData();
-    fd.append("video", file, file.name || "walkaround.mp4");
+    for (const f of files) fd.append("video", f, f.name || "walkaround.mp4");
+    for (const f of corners) fd.append("corner", f, f.name || "corner.mp4");
     const xhr = new XMLHttpRequest();
     xhrRef.current = xhr;
     xhr.open("POST", `/api/scans?building=${encodeURIComponent(buildingId)}`);
@@ -143,9 +157,9 @@ export function ScanForm({
           name="video"
           type="file"
           accept="video/*"
-          capture="environment"
+          multiple
           required
-          onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+          onChange={(e) => setFiles(sortByName(e.target.files))}
           className={cx(
             inputClass,
             "mt-1 file:mr-3 file:rounded-lg file:border-0 file:bg-soft file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-ink",
@@ -153,7 +167,30 @@ export function ScanForm({
           aria-describedby="video-help"
         />
         <p id="video-help" className="mt-1 text-xs text-muted">
-          Record now or pick a video. About 1–3 minutes, all four sides. {file && `Selected: ${file.name} (${(file.size / 1e6).toFixed(1)} MB)`}
+          One loop of all four sides, about 1–3 minutes. Several clips are fine: they&apos;re joined in name order. {clipSummary(files)}
+        </p>
+      </div>
+
+      <div>
+        <label htmlFor="corner" className="text-sm font-semibold text-ink">
+          Corner clips <span className="font-normal text-muted">(optional, for eave depth)</span>
+        </label>
+        <input
+          id="corner"
+          name="corner"
+          type="file"
+          accept="video/*"
+          multiple
+          onChange={(e) => setCorners(sortByName(e.target.files))}
+          className={cx(
+            inputClass,
+            "mt-1 file:mr-3 file:rounded-lg file:border-0 file:bg-soft file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-ink",
+          )}
+          aria-describedby="corner-help"
+        />
+        <p id="corner-help" className="mt-1 text-xs text-muted">
+          3–5 s at each corner, filmed along the wall so the roof overhang shows in profile, marker on the ground. All four
+          corners if the eaves differ. {clipSummary(corners)}
         </p>
       </div>
 
@@ -204,7 +241,7 @@ export function ScanForm({
       )}
 
       <div className="flex flex-wrap gap-2">
-        <button type="submit" className={buttonClass("primary")} disabled={!file || !buildingId || uploading || (needsPasscode && !passcode)}>
+        <button type="submit" className={buttonClass("primary")} disabled={!files.length || !buildingId || uploading || (needsPasscode && !passcode)}>
           {uploading ? "Uploading…" : "Start scan"}
         </button>
         {health === "offline" && !error?.offline && sampleButton}

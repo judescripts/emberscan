@@ -46,6 +46,7 @@ def _load_env_file() -> None:
 _load_env_file()
 DATA_DIR = Path(os.environ.get("WORKER_DATA_DIR", REPO_ROOT / "workers" / ".data" / "scans"))
 MAX_UPLOAD_BYTES = 500 * 1024 * 1024
+MAX_CLIPS = 12
 ALLOWED_EXT = {".mp4", ".mov", ".m4v"}
 SCAN_ID = re.compile(r"^[a-z0-9-]{8,64}$")
 
@@ -125,15 +126,21 @@ async def research(req: ResearchRequest) -> dict:
 
 @app.post("/scans", status_code=202, dependencies=[Depends(require_token)])
 async def create_scan(
-    video: UploadFile = File(...),
+    video: list[UploadFile] = File(...),
+    corner: list[UploadFile] | None = File(default=None),
     building_label: str = Form(...),
     eave_depth_ft: float | None = Form(default=None),
     include_proposed: bool = Form(default=True),
     concepts: str | None = Form(default=None),
 ) -> dict:
-    ext = Path(video.filename or "").suffix.lower() or ".mp4"
-    if ext not in ALLOWED_EXT:
-        raise HTTPException(415, f"unsupported video type {ext}; use MP4 or MOV")
+    """One or more walkaround clips (`video`, joined in order) plus optional corner clips."""
+    corners = corner or []
+    if len(video) + len(corners) > MAX_CLIPS:
+        raise HTTPException(413, f"at most {MAX_CLIPS} clips per scan")
+    for up in [*video, *corners]:
+        ext = Path(up.filename or "").suffix.lower() or ".mp4"
+        if ext not in ALLOWED_EXT:
+            raise HTTPException(415, f"unsupported video type {ext}; use MP4 or MOV")
     scan_id = uuid.uuid4().hex[:16]
     try:
         BUDGET.reserve(scan_id)  # before any upload work: refuse fast when over budget
@@ -141,15 +148,22 @@ async def create_scan(
         raise HTTPException(429, str(e)) from e
     d = DATA_DIR / scan_id
     d.mkdir(parents=True, exist_ok=True)
-    path = d / f"upload{ext}"
-    size = 0
-    try:
+    total = 0
+
+    async def save(up: UploadFile, name: str) -> Path:
+        nonlocal total
+        path = d / f"{name}{Path(up.filename or '').suffix.lower() or '.mp4'}"
         with path.open("wb") as f:
-            while chunk := await video.read(1024 * 1024):
-                size += len(chunk)
-                if size > MAX_UPLOAD_BYTES:
-                    raise HTTPException(413, "video is larger than 500 MB")
+            while chunk := await up.read(1024 * 1024):
+                total += len(chunk)
+                if total > MAX_UPLOAD_BYTES:
+                    raise HTTPException(413, "videos are larger than 500 MB in total")
                 f.write(chunk)
+        return path
+
+    try:
+        walks = [await save(up, f"upload{i:02d}" if i else "upload") for i, up in enumerate(video)]
+        corner_paths = [await save(up, f"corner{i:02d}") for i, up in enumerate(corners)]
     except BaseException:
         BUDGET.release(scan_id)
         raise
@@ -161,11 +175,13 @@ async def create_scan(
     job = ScanJob(
         scan_id=scan_id,
         dir=d,
-        video_path=path,
+        video_path=walks[0],
         building_label=building_label[:120],
         eave_depth_ft=eave,
         include_proposed=include_proposed,
         concepts=chosen,
+        extra_clips=walks[1:],
+        corner_clips=corner_paths,
     )
     JOBS[scan_id] = job
     _save_state(job)

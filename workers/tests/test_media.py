@@ -5,7 +5,14 @@ from pathlib import Path
 
 import pytest
 
-from emberscan_workers.media import MediaError, extract_audio, extract_frames, normalize, probe
+from emberscan_workers.media import (
+    MediaError,
+    extract_audio,
+    extract_frames,
+    join_clips,
+    normalize,
+    probe,
+)
 
 pytestmark = pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="ffmpeg not installed")
 
@@ -80,3 +87,21 @@ def test_not_a_video(tmp_path: Path) -> None:
     bad.write_text("not a video")
     with pytest.raises(MediaError):
         probe(bad)
+
+
+def test_join_clips_mixed_orientation_and_audio(tmp_path: Path) -> None:
+    a = _make_clip(tmp_path / "a.mp4", seconds=2)
+    b = _make_clip(tmp_path / "b.mp4", seconds=3, audio=False, size="360x640")  # portrait, silent
+    spans = join_clips([("a.mp4", a), ("b.mp4", b)], tmp_path / "joined.mp4")
+    assert [s.name for s in spans] == ["a.mp4", "b.mp4"]
+    assert spans[0].start_s == 0 and spans[1].start_s == pytest.approx(2, abs=0.1)
+    info = probe(tmp_path / "joined.mp4")
+    assert info.duration_s == pytest.approx(5, abs=0.2)
+    assert (info.width, info.height) == (1280, 720) and info.has_audio
+    assert not list(tmp_path.glob("_part*"))
+
+
+def test_join_clips_enforces_total_length(tmp_path: Path) -> None:
+    a = _make_clip(tmp_path / "a.mp4", seconds=2)
+    with pytest.raises(MediaError, match="limit"):
+        join_clips([("a", a), ("b", a)], tmp_path / "j.mp4", max_duration_s=3)

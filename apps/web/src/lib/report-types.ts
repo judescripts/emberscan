@@ -108,6 +108,8 @@ export interface Report {
   include_proposed: boolean;
   video: VideoInfo;
   eave_depth_ft?: Range | null;
+  eave_source?: "entered" | "corner_video" | null;
+  eave_estimate?: { confidence: string; reason: string; frames: string[]; model: string } | null;
   hazards: Hazard[];
   results: RuleResult[];
   score: ScoreBlock;
@@ -163,6 +165,7 @@ export const PIPELINE_STAGES = [
   "frames",
   "segment",
   "measure",
+  "eaves",
   "rules",
   "narration",
   "agent",

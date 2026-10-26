@@ -18,8 +18,9 @@ from pathlib import Path
 from typing import Any
 
 from .contracts import BBox, Evidence, Hazard, Range, Report
+from .eave import EaveEstimate, estimate_eave
 from .hazards import BY_CLASS, CORE, Concept
-from .media import VideoInfo, extract_audio, extract_frames, normalize, probe
+from .media import VideoInfo, extract_audio, extract_frames, join_clips, normalize, probe
 from .meta import MetaClient
 from .meta.agent import ScanTools, run_agent
 from .meta.sam import SegmentationResult, Track, segment_video
@@ -33,6 +34,7 @@ STAGES = [
     "frames",
     "segment",
     "measure",
+    "eaves",
     "rules",
     "narration",
     "agent",
@@ -53,6 +55,9 @@ class ScanJob:
     eave_depth_ft: Range | None = None
     include_proposed: bool = True
     concepts: list[Concept] = field(default_factory=lambda: list(CORE))
+    # More walkaround clips after video_path (joined in order) and corner clips for eave depth.
+    extra_clips: list[Path] = field(default_factory=list)
+    corner_clips: list[Path] = field(default_factory=list)
     status: str = "queued"
     stage: str = "upload"
     progress: float = 0.0
@@ -195,7 +200,16 @@ async def run_scan(
         await p.set("upload", "done", job.video_path.name)
 
         await p.set("normalize", "running")
+        clips: list[dict[str, Any]] = []
+        if job.extra_clips:
+            parts = [job.video_path, *job.extra_clips]
+            spans = await asyncio.to_thread(
+                join_clips, [(p_.name, p_) for p_ in parts], job.dir / "joined.mp4"
+            )
+            clips = [vars(s) for s in spans]
+            job.video_path = job.dir / "joined.mp4"
         src = probe(job.video_path)
+        eave_task = asyncio.create_task(_eaves(job, client, ledger, p))
         norm = await asyncio.to_thread(normalize, job.video_path, job.dir / "normalized.mp4")
         sam_video = await asyncio.to_thread(
             normalize, job.video_path, job.dir / "sam.mp4", 720, 300.0, SAM_FPS
@@ -203,7 +217,8 @@ async def run_scan(
         await p.set(
             "normalize",
             "done",
-            f"{src.duration_s:.0f}s video · {norm.width}x{norm.height} · "
+            (f"{len(clips)} clips joined · " if clips else "")
+            + f"{src.duration_s:.0f}s video · {norm.width}x{norm.height} · "
             f"{sam_video.frame_count} frames at {SAM_FPS:g} fps for SAM 3.1",
         )
 
@@ -233,11 +248,14 @@ async def run_scan(
         transcript = await narration_task
         attach_narration(hazards, transcript, SAM_FPS)
 
+        estimate = await eave_task
+        eave, eave_source = job.eave_depth_ft, ("entered" if job.eave_depth_ft else None)
+        if eave is None and estimate is not None:
+            eave, eave_source = estimate.depth_ft, "corner_video"
+
         await p.set("rules", "running")
         pack = load_pack("us-ca")
-        engine = evaluate(
-            hazards, pack, eave_depth_ft=job.eave_depth_ft, include_proposed=job.include_proposed
-        )
+        engine = evaluate(hazards, pack, eave_depth_ft=eave, include_proposed=job.include_proposed)
         n = engine.score
         await p.set(
             "rules",
@@ -271,8 +289,12 @@ async def run_scan(
                 "width": norm.width,
                 "height": norm.height,
                 "sam_fps": SAM_FPS,
+                "clips": clips,
+                "corner_clips": len(job.corner_clips),
             },
-            eave_depth_ft=job.eave_depth_ft,
+            eave_depth_ft=eave,
+            eave_source=eave_source,
+            eave_estimate=estimate.model_dump(exclude={"depth_ft"}) if estimate else None,
             hazards=hazards,
             results=engine.results,
             score=engine.score,
@@ -369,3 +391,29 @@ async def _narration(
         return None
     await p.set("narration", "done", f"{len(t.turns)} narration turn(s)")
     return t
+
+
+async def _eaves(
+    job: ScanJob, client: MetaClient, ledger: SpendLedger, p: Progress
+) -> EaveEstimate | None:
+    """Eave depth from corner clips (runs alongside SAM). An entered depth always wins."""
+    if job.eave_depth_ft is not None:
+        await p.set("eaves", "skipped", "Eave depth entered by the owner")
+        return None
+    if not job.corner_clips:
+        await p.set("eaves", "skipped", "No corner clips")
+        return None
+    await p.set("eaves", "running", f"Muse Spark reading {len(job.corner_clips)} corner clip(s)")
+    try:
+        est = await estimate_eave(client, ledger, job.corner_clips, job.dir)
+    except SpendLimitExceeded:
+        raise
+    except Exception as e:  # an eave estimate is optional; never fail the scan over it
+        await p.set("eaves", "skipped", f"Couldn't estimate ({type(e).__name__})")
+        return None
+    if est is None:
+        await p.set("eaves", "done", "Overhang not visible in the corner clips")
+        return None
+    r = est.depth_ft
+    await p.set("eaves", "done", f"About {r.min:g}-{r.max:g} ft ({est.confidence} confidence)")
+    return est

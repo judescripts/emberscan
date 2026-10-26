@@ -117,6 +117,9 @@ class Report(BaseModel):
     include_proposed: bool = True
     video: dict  # {duration_s, fps, width, height, sam_fps}
     eave_depth_ft: Range | None = None
+    # "entered" (typed by the owner, always wins) or "corner_video" (Muse Spark estimate).
+    eave_source: Literal["entered", "corner_video"] | None = None
+    eave_estimate: dict | None = None  # {confidence, reason, frames, model} for corner_video
     hazards: list[Hazard]
     results: list[RuleResult]
     score: ScoreBlock
