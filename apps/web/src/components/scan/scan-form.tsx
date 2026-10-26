@@ -30,6 +30,7 @@ export function ScanForm({
   const [buildingId, setBuildingId] = useState(initialBuilding ?? buildings[0]?.id ?? "");
   const [files, setFiles] = useState<File[]>([]);
   const [corners, setCorners] = useState<File[]>([]);
+  const [sides, setSides] = useState<string[]>([]);
   const [health, setHealth] = useState<Health>("checking");
   const [uploadPct, setUploadPct] = useState<number | null>(null);
   const [error, setError] = useState<{ message: string; offline: boolean } | null>(null);
@@ -67,6 +68,7 @@ export function ScanForm({
     const fd = new FormData();
     for (const f of files) fd.append("video", f, f.name || "walkaround.mp4");
     for (const f of corners) fd.append("corner", f, f.name || "corner.mp4");
+    if (sides.some(Boolean)) fd.append("clip_sides", files.map((_, i) => sides[i] ?? "").join(","));
     const xhr = new XMLHttpRequest();
     xhrRef.current = xhr;
     xhr.open("POST", `/api/scans?building=${encodeURIComponent(buildingId)}`);
@@ -159,7 +161,10 @@ export function ScanForm({
           accept="video/*"
           multiple
           required
-          onChange={(e) => setFiles(sortByName(e.target.files))}
+          onChange={(e) => {
+            setFiles(sortByName(e.target.files));
+            setSides([]);
+          }}
           className={cx(
             inputClass,
             "mt-1 file:mr-3 file:rounded-lg file:border-0 file:bg-soft file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-ink",
@@ -169,6 +174,50 @@ export function ScanForm({
         <p id="video-help" className="mt-1 text-xs text-muted">
           One loop of all four sides, about 1–3 minutes. Several clips are fine: they&apos;re joined in name order. {clipSummary(files)}
         </p>
+        {files.length > 0 && (
+          <fieldset className="mt-3">
+            <legend className="text-sm font-semibold text-ink">
+              Which side is each clip? <span className="font-normal text-muted">(optional, puts hazards on the zone map)</span>
+            </legend>
+            <ul className="mt-1 flex flex-col gap-1.5">
+              {files.map((f, i) => (
+                <li key={f.name + i} className="flex flex-wrap items-center gap-2 text-sm">
+                  <span className="min-w-0 flex-1 truncate text-muted" title={f.name}>
+                    {i + 1}. {f.name}
+                  </span>
+                  <span className="flex gap-1" role="radiogroup" aria-label={`Side for ${f.name}`}>
+                    {(["N", "E", "S", "W"] as const).map((s) => {
+                      const on = sides[i] === s;
+                      return (
+                        <button
+                          key={s}
+                          type="button"
+                          role="radio"
+                          aria-checked={on}
+                          aria-label={{ N: "North", E: "East", S: "South", W: "West" }[s]}
+                          onClick={() =>
+                            setSides((prev) => {
+                              const next = files.map((_, j) => prev[j] ?? "");
+                              next[i] = on ? "" : s;
+                              return next;
+                            })
+                          }
+                          className={cx(
+                            "h-8 w-8 rounded-lg border text-xs font-bold",
+                            on ? "border-brand bg-brand text-brand-fg" : "border-line bg-surface text-ink",
+                          )}
+                        >
+                          {s}
+                        </button>
+                      );
+                    })}
+                  </span>
+                </li>
+              ))}
+            </ul>
+            <p className="mt-1 text-xs text-muted">Or just say “north side…” while you film.</p>
+          </fieldset>
+        )}
       </div>
 
       <div>

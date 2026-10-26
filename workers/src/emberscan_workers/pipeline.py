@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import asyncio
 import os
+import re
 import time
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
@@ -73,6 +74,9 @@ class ScanJob:
     # More walkaround clips after video_path (joined in order) and corner clips for eave depth.
     extra_clips: list[Path] = field(default_factory=list)
     corner_clips: list[Path] = field(default_factory=list)
+    clip_sides: list[str] = field(
+        default_factory=list
+    )  # N/E/S/W per walkaround clip, "" if unknown
     status: str = "queued"
     stage: str = "upload"
     progress: float = 0.0
@@ -84,6 +88,9 @@ class ScanJob:
     marker_frames: list[Path] = field(default_factory=list)  # full-res twins of the SAM frames
     report: Report | None = None
     created_at: str = field(default_factory=lambda: datetime.now(UTC).isoformat())
+
+    def stages_detail(self, name: str) -> str:
+        return next((s["detail"] for s in self.stages if s["name"] == name), "")
 
     def public(self, with_report: bool = True) -> dict[str, Any]:
         out: dict[str, Any] = {
@@ -185,6 +192,56 @@ def attach_narration(hazards: list[Hazard], transcript: Transcript | None, sam_f
             h.narration = " ".join(t.text for t in turns)[:300]
 
 
+SIDE_WORDS = {"north": "N", "east": "E", "south": "S", "west": "W"}
+_SIDE_RE = re.compile(r"\b(north|east|south|west)(?:ern)?\s+(?:side|wall|face)\b", re.I)
+
+
+def narration_sides(transcript: Transcript | None) -> list[tuple[int, str]]:
+    """(time_ms, side) wherever the person filming names a side ("north side", "east wall")."""
+    if not transcript:
+        return []
+    marks = []
+    for t in transcript.turns:
+        for m in _SIDE_RE.finditer(t.text):
+            marks.append((t.start_ms, SIDE_WORDS[m.group(1).lower()]))
+    return sorted(marks)
+
+
+def assign_sides(
+    hazards: list[Hazard],
+    sam_fps: float,
+    clips: list[dict[str, Any]],
+    clip_sides: list[str],
+    spoken: list[tuple[int, str]],
+) -> int:
+    """Give each hazard the side of the clip it was mostly seen in (when the uploader tagged
+    clips), else the side last named in the narration before it appeared. Returns how many
+    hazards got a side."""
+    spans = clips or [{"start_s": 0.0, "duration_s": float("inf")}]
+    n = 0
+    for h in hazards:
+        if not h.frames:
+            continue
+        votes: dict[str, int] = {}
+        for f in h.frames:
+            t = f / sam_fps
+            for i, s in enumerate(spans):
+                if s["start_s"] <= t < s["start_s"] + s["duration_s"]:
+                    side = clip_sides[i] if i < len(clip_sides) else ""
+                    if side in ("N", "E", "S", "W"):
+                        votes[side] = votes.get(side, 0) + 1
+                    break
+        side = max(votes, key=lambda k: votes[k]) if votes else None
+        if side is None and spoken:
+            first_ms = min(h.frames) * 1000 / sam_fps
+            said = [s for ms, s in spoken if ms <= first_ms + 1500]
+            side = said[-1] if said else None
+        if side:
+            h.side = side
+            n += 1
+    return n
+
+
 # ---------------------------------------------------------------- measurement hook
 
 MeasureFn = Callable[[list[Hazard], dict[str, Track], list[Path], ScanJob], list[Hazard]]
@@ -284,6 +341,13 @@ async def run_scan(
 
         transcript = await narration_task
         attach_narration(hazards, transcript, fps)
+        sided = assign_sides(hazards, fps, clips, job.clip_sides, narration_sides(transcript))
+        if sided:
+            await p.set(
+                "narration",
+                "done",
+                f"{job.stages_detail('narration')} · {sided} hazards placed on a side",
+            )
 
         estimate = await eave_task
         eave, eave_source = job.eave_depth_ft, ("entered" if job.eave_depth_ft else None)
