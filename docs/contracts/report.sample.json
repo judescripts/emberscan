@@ -1,0 +1,590 @@
+{
+  "version": "1",
+  "scan_id": "sample-scan",
+  "building_label": "Building B · Units 5–8",
+  "created_at": "2026-10-26T12:00:00Z",
+  "pack_id": "us-ca",
+  "pack_version": "2026-10-26",
+  "include_proposed": true,
+  "video": {
+    "duration_s": 72.0,
+    "fps": 30,
+    "width": 1280,
+    "height": 720,
+    "sam_fps": 3
+  },
+  "eave_depth_ft": {
+    "min": 1.5,
+    "max": 2.0
+  },
+  "hazards": [
+    {
+      "id": "h-wood_mulch-0",
+      "cls": "wood_mulch",
+      "concept": "bark mulch",
+      "track_id": "0",
+      "label": "Bark mulch bed along the front wall",
+      "frames": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        31,
+        32,
+        33,
+        34,
+        35,
+        36,
+        37,
+        38,
+        39,
+        40,
+        41,
+        42,
+        43,
+        44,
+        45,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51,
+        52,
+        53,
+        54,
+        55,
+        56,
+        57,
+        58,
+        59
+      ],
+      "confidence": "high",
+      "sam_confidence": 0.81,
+      "method": "marker",
+      "distance_ft": {
+        "min": 0.0,
+        "max": 0.5
+      },
+      "clearance_ft": null,
+      "clearance_to": null,
+      "height_in": null,
+      "zone": "Z0",
+      "zone_uncertain": false,
+      "side": "S",
+      "narration": "South side, bark mulch right up against the wall.",
+      "evidence": [
+        {
+          "frame_index": 12,
+          "timestamp_ms": 3996,
+          "bbox": {
+            "left": 0.0,
+            "top": 300.0,
+            "right": 1280.0,
+            "bottom": 720.0
+          },
+          "image_path": null
+        }
+      ]
+    },
+    {
+      "id": "h-shrub-0",
+      "cls": "shrub",
+      "concept": "shrub",
+      "track_id": "0",
+      "label": "Juniper under the front window",
+      "frames": [
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        31,
+        32,
+        33,
+        34,
+        35,
+        36,
+        37,
+        38,
+        39,
+        40,
+        41,
+        42,
+        43,
+        44,
+        45,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51,
+        52,
+        53,
+        54,
+        55,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61,
+        62,
+        63,
+        64,
+        65,
+        66,
+        67,
+        68,
+        69
+      ],
+      "confidence": "high",
+      "sam_confidence": 0.77,
+      "method": "marker",
+      "distance_ft": {
+        "min": 1.5,
+        "max": 2.5
+      },
+      "clearance_ft": {
+        "min": 0.5,
+        "max": 1.5
+      },
+      "clearance_to": "window",
+      "height_in": null,
+      "zone": "Z0",
+      "zone_uncertain": false,
+      "side": "S",
+      "narration": null,
+      "evidence": [
+        {
+          "frame_index": 40,
+          "timestamp_ms": 13320,
+          "bbox": {
+            "left": 380.0,
+            "top": 260.0,
+            "right": 760.0,
+            "bottom": 640.0
+          },
+          "image_path": null
+        }
+      ]
+    },
+    {
+      "id": "h-woodpile-0",
+      "cls": "woodpile",
+      "concept": "stacked firewood",
+      "track_id": "1",
+      "label": "Stacked firewood by the side fence",
+      "frames": [
+        90,
+        91,
+        92,
+        93,
+        94,
+        95,
+        96,
+        97,
+        98,
+        99,
+        100,
+        101,
+        102,
+        103,
+        104,
+        105,
+        106,
+        107,
+        108,
+        109,
+        110,
+        111,
+        112,
+        113,
+        114,
+        115,
+        116,
+        117,
+        118,
+        119,
+        120,
+        121,
+        122,
+        123,
+        124,
+        125,
+        126,
+        127,
+        128,
+        129
+      ],
+      "confidence": "high",
+      "sam_confidence": 0.88,
+      "method": "marker",
+      "distance_ft": {
+        "min": 8.0,
+        "max": 11.0
+      },
+      "clearance_ft": null,
+      "clearance_to": null,
+      "height_in": null,
+      "zone": "Z1",
+      "zone_uncertain": false,
+      "side": "E",
+      "narration": "This woodpile belongs to unit 6.",
+      "evidence": [
+        {
+          "frame_index": 110,
+          "timestamp_ms": 36630,
+          "bbox": {
+            "left": 520.0,
+            "top": 330.0,
+            "right": 760.0,
+            "bottom": 560.0
+          },
+          "image_path": null
+        }
+      ]
+    },
+    {
+      "id": "h-combustible_fence-0",
+      "cls": "combustible_fence",
+      "concept": "wooden fence",
+      "track_id": "0",
+      "label": "Wooden fence joining the wall",
+      "frames": [
+        125,
+        126,
+        127,
+        128,
+        129,
+        130,
+        131,
+        132,
+        133,
+        134,
+        135,
+        136,
+        137,
+        138,
+        139,
+        140,
+        141,
+        142,
+        143,
+        144,
+        145,
+        146,
+        147,
+        148,
+        149,
+        150,
+        151,
+        152,
+        153,
+        154,
+        155,
+        156,
+        157,
+        158,
+        159
+      ],
+      "confidence": "medium",
+      "sam_confidence": 0.69,
+      "method": "marker",
+      "distance_ft": {
+        "min": 0.0,
+        "max": 0.3
+      },
+      "clearance_ft": null,
+      "clearance_to": null,
+      "height_in": null,
+      "zone": "Z0",
+      "zone_uncertain": false,
+      "side": "E",
+      "narration": null,
+      "evidence": [
+        {
+          "frame_index": 140,
+          "timestamp_ms": 46620,
+          "bbox": {
+            "left": 700.0,
+            "top": 120.0,
+            "right": 1280.0,
+            "bottom": 640.0
+          },
+          "image_path": null
+        }
+      ]
+    },
+    {
+      "id": "h-shrub-1",
+      "cls": "shrub",
+      "concept": "shrub",
+      "track_id": "3",
+      "label": "Rosemary hedge near the corner",
+      "frames": [
+        170,
+        171,
+        172,
+        173,
+        174,
+        175,
+        176,
+        177,
+        178,
+        179,
+        180,
+        181,
+        182,
+        183,
+        184,
+        185,
+        186,
+        187,
+        188,
+        189,
+        190,
+        191,
+        192,
+        193,
+        194,
+        195,
+        196,
+        197,
+        198,
+        199
+      ],
+      "confidence": "medium",
+      "sam_confidence": 0.64,
+      "method": "marker",
+      "distance_ft": {
+        "min": 4.0,
+        "max": 7.0
+      },
+      "clearance_ft": null,
+      "clearance_to": null,
+      "height_in": null,
+      "zone": "Z0",
+      "zone_uncertain": true,
+      "side": "W",
+      "narration": null,
+      "evidence": [
+        {
+          "frame_index": 185,
+          "timestamp_ms": 61605,
+          "bbox": {
+            "left": 200.0,
+            "top": 380.0,
+            "right": 560.0,
+            "bottom": 650.0
+          },
+          "image_path": null
+        }
+      ]
+    }
+  ],
+  "results": [
+    {
+      "rule_id": "Z1-04",
+      "title": "No exposed firewood piles in Zone 1",
+      "zone": "Z1",
+      "rule_status": "adopted",
+      "status": "fail",
+      "reason": "Firewood measured 8–11 ft from the wall, inside the 30 ft zone.",
+      "hazard_ids": [
+        "h-woodpile-0"
+      ],
+      "citation_url": "https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=PRC&sectionNum=4291",
+      "citation_label": "14 CCR 1299.03(a)"
+    },
+    {
+      "rule_id": "Z0-01",
+      "title": "No combustible materials in Zone 0",
+      "zone": "Z0",
+      "rule_status": "proposed",
+      "status": "needs-review",
+      "reason": "Would not meet the proposed Zone 0 rule: bark mulch within 0–0.5 ft.",
+      "hazard_ids": [
+        "h-wood_mulch-0"
+      ],
+      "citation_url": "https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=PRC&sectionNum=4291",
+      "citation_label": "Zone 0 draft (Aug 2026)"
+    },
+    {
+      "rule_id": "Z0-09",
+      "title": "No vegetation within 2 ft of windows, doors or vents",
+      "zone": "Z0",
+      "rule_status": "proposed",
+      "status": "needs-review",
+      "reason": "Would not meet the proposed rule: juniper about 0.5–1.5 ft from the window.",
+      "hazard_ids": [
+        "h-shrub-0"
+      ],
+      "citation_url": "https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=PRC&sectionNum=4291",
+      "citation_label": "Zone 0 draft (Aug 2026)"
+    },
+    {
+      "rule_id": "Z0-14",
+      "title": "No woody shrubs in Zone 0",
+      "zone": "Z0",
+      "rule_status": "proposed",
+      "status": "needs-review",
+      "reason": "Rosemary at 4–7 ft straddles the 5 ft line. Confirm with a tape.",
+      "hazard_ids": [
+        "h-shrub-1"
+      ],
+      "citation_url": "https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=PRC&sectionNum=4291",
+      "citation_label": "Zone 0 draft (Aug 2026)"
+    },
+    {
+      "rule_id": "ALL-02",
+      "title": "Roof free of leaves, needles and other plant debris",
+      "zone": "ALL",
+      "rule_status": "adopted",
+      "status": "pass",
+      "reason": "Nothing found on the filmed roof edges.",
+      "hazard_ids": [],
+      "citation_url": "https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=PRC&sectionNum=4291",
+      "citation_label": "PRC 4291(a)(4)"
+    }
+  ],
+  "score": {
+    "score": 92,
+    "label": "In good shape",
+    "fails": 1,
+    "reviews": 3,
+    "passes": 1,
+    "zone0_met": 0,
+    "zone0_total": 3,
+    "unfilmed_sides": []
+  },
+  "fixes": [
+    {
+      "id": "f1",
+      "title": "Move the firewood 30 ft from the building or into a closed metal box",
+      "why": "A woodpile near the wall burns long and hot right where embers land.",
+      "rule_ids": [
+        "Z1-04"
+      ],
+      "hazard_ids": [
+        "h-woodpile-0"
+      ],
+      "required": true,
+      "effort": "S",
+      "cost_band": "$",
+      "owner": "Owner",
+      "priority": 1
+    },
+    {
+      "id": "f2",
+      "title": "Replace bark mulch within 5 ft of the wall with gravel or pavers",
+      "why": "Mulch against siding is one of the most common ways embers start a house fire.",
+      "rule_ids": [
+        "Z0-01"
+      ],
+      "hazard_ids": [
+        "h-wood_mulch-0"
+      ],
+      "required": false,
+      "effort": "M",
+      "cost_band": "$$",
+      "owner": "HOA",
+      "priority": 2
+    },
+    {
+      "id": "f3",
+      "title": "Remove the juniper under the front window",
+      "why": "Junipers are oily and burn hot; windows are a weak point.",
+      "rule_ids": [
+        "Z0-09"
+      ],
+      "hazard_ids": [
+        "h-shrub-0"
+      ],
+      "required": false,
+      "effort": "S",
+      "cost_band": "$",
+      "owner": "HOA",
+      "priority": 3
+    }
+  ],
+  "agent_trace": [
+    {
+      "kind": "plan",
+      "summary": "Check every zone; confirm borderline distances; use narration for ownership.",
+      "detail": null
+    },
+    {
+      "kind": "tool_call",
+      "summary": "list_hazards(zone='Z0')",
+      "detail": {
+        "returned": 3
+      }
+    },
+    {
+      "kind": "tool_call",
+      "summary": "check_rules(scan)",
+      "detail": {
+        "fail": 1,
+        "needs_review": 3,
+        "pass": 1
+      }
+    },
+    {
+      "kind": "tool_call",
+      "summary": "get_narration(110 s–120 s)",
+      "detail": {
+        "text": "This woodpile belongs to unit 6."
+      }
+    },
+    {
+      "kind": "verify",
+      "summary": "All 3 fixes cite existing rule and hazard ids. 0 claims dropped.",
+      "detail": null
+    },
+    {
+      "kind": "output",
+      "summary": "3 fixes, 1 required.",
+      "detail": null
+    }
+  ],
+  "cost": {
+    "spent_usd": 0.31,
+    "calls": 14
+  },
+  "disclaimer": "EmberScan flags likely wildfire hazards and suggests fixes based on published defensible space rules. It is not an inspection and does not certify that any property is safe or compliant. Confirm requirements with your local fire authority."
+}
