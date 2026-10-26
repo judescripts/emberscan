@@ -107,6 +107,21 @@ def _render(
     return bool(cv2.imwrite(str(out_path), img, [cv2.IMWRITE_JPEG_QUALITY, 85]))
 
 
+def _clearest_frame(track: Track, frames: list[Path]) -> int:
+    """Frame where the object is biggest and most confident, preferring it not cut off."""
+    img = cv2.imread(str(frames[0]))
+    h, w = img.shape[:2] if img is not None else (720, 1280)
+    margin = 0.01 * max(w, h)
+
+    def score(i: int) -> float:
+        b = track.boxes[i]
+        area = max(b.right - b.left, 0) * max(b.bottom - b.top, 0)
+        clipped = b.left < margin or b.top < margin or b.right > w - margin or b.bottom > h - margin
+        return area * (b.confidence or 0.5) * (0.4 if clipped else 1.0)
+
+    return max((i for i in track.boxes if i < len(frames)), key=score, default=0)
+
+
 def _ft(lo: float, hi: float) -> str:
     spec = ".1f" if hi - lo < 2 else ".0f"
     return f"{lo:{spec}}-{hi:{spec}}"
@@ -146,7 +161,11 @@ def measure_hazards(
             r = m.distance_ft
             label = f"{h.label}: {_ft(r.min, r.max)} ft from wall ({m.confidence})"
         else:
-            frame = h.evidence[0].frame_index if h.evidence else (h.frames[0] if h.frames else 0)
+            frame = (
+                _clearest_frame(track, frames)
+                if track.boxes
+                else (h.evidence[0].frame_index if h.evidence else (h.frames[0] if h.frames else 0))
+            )
             label = f"{h.label}: not measured (no marker in view)"
         if frame >= len(frames):
             continue
