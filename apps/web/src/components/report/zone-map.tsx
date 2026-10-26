@@ -2,6 +2,7 @@ import { sideWords } from "@/lib/format";
 import type { Hazard, RuleResult } from "@/lib/report-types";
 import { hazardStatus } from "@/lib/score";
 import { bandRect, buildingRect, DEFAULT_GEOMETRY, layoutPins } from "@/lib/zonemap";
+import { WallProfile } from "./wall-profile";
 
 const PIN_FILL = { fail: "var(--fail)", "needs-review": "var(--review)", pass: "var(--pass)" } as const;
 
@@ -18,6 +19,40 @@ export function ZoneMap({ hazards, results, buildingLabel }: { hazards: Hazard[]
   const pins = layoutPins(hazards, g);
   const unmapped = hazards.filter((h) => !pins.some((p) => p.hazardId === h.id));
   const byId = new Map(hazards.map((h) => [h.id, h]));
+
+  if (pins.length === 0) {
+    // No sides recorded: a top-down map would be empty, so show distance from the wall instead.
+    const measured = hazards.filter((h) => h.distance_ft);
+    const rest = hazards.filter((h) => !h.distance_ft);
+    return (
+      <div className="flex flex-col gap-3">
+        <p className="text-sm text-muted">
+          This scan didn&apos;t record which side of the building each hazard is on, so here&apos;s each measured hazard&apos;s
+          distance from the wall. Tag clips with their side when you upload (or say “north side…” while filming) to get the
+          top-down map.
+        </p>
+        {measured.length > 0 ? (
+          <WallProfile hazards={measured} all={hazards} results={results} />
+        ) : (
+          <p className="text-sm text-muted">No hazards were measured with the marker in this scan.</p>
+        )}
+        <p className="text-center text-xs text-muted">Not to scale: the first 5 ft are stretched so Zone 0 is readable.</p>
+        {rest.length > 0 && (
+          <p className="text-xs text-muted">
+            Not measured:{" "}
+            {rest.map((h, i) => (
+              <span key={h.id}>
+                {i > 0 && ", "}
+                <a className="underline" href={`#${h.id}`}>
+                  {hazards.indexOf(h) + 1}. {h.label}
+                </a>
+              </span>
+            ))}
+          </p>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-3">
