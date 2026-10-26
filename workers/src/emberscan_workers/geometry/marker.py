@@ -35,6 +35,7 @@ noise for ``"pnp"``) so measurements can propagate the fit's uncertainty to any 
 
 from __future__ import annotations
 
+import dataclasses
 import math
 from collections.abc import Iterable
 from dataclasses import dataclass
@@ -61,8 +62,10 @@ N_SAMPLES = 48  # Monte Carlo homography samples per pose
 CORNER_SIGMA_FLOOR_PX = 0.1  # corner noise floor (blur, compression) even when the fit is tight
 # A good flat sheet fits its model to a small fraction of a square. Larger residuals mean a
 # curled/folded sheet or a wrong grid (e.g. a partial match on a different board): reject.
-MAX_REPROJ_RMS_PX = 1.0  # always accepted below this
-MAX_REPROJ_RMS_REL = 0.04  # ...or below this fraction of the square size
+MAX_REPROJ_RMS_PX = (
+    2.0  # real sheets on uneven ground, seen at a slant; looser fits get wider ranges
+)
+MAX_REPROJ_RMS_REL = 0.08  # of one square's size, for markers seen large
 FOCAL_MAX_REL_STD = 0.05  # estimate_focal_px rejects estimates noisier than this
 _SEED = 20261026
 
@@ -325,6 +328,27 @@ def detect_marker(
     raw, detector = found
     hgt, wid = gray.shape[:2]
     return _build_pose(_orient(raw), (int(wid), int(hgt)), detector, focal_px, focal_std_px)
+
+
+def scale_pose(pose: MarkerPose, k: float) -> MarkerPose:
+    """The same marker in an image scaled by ``k`` (e.g. detected at full resolution, used on
+    a smaller copy of the frame): pixel quantities scale by k, ground inches don't."""
+    s = np.diag([k, k, 1.0])
+    s_inv = np.diag([1 / k, 1 / k, 1.0])
+    w, h = pose.image_size
+    return dataclasses.replace(
+        pose,
+        h=_normalize(pose.h @ s_inv),
+        h_inv=_normalize(s @ pose.h_inv),
+        h_samples=np.stack([_normalize(m @ s_inv) for m in pose.h_samples]),
+        corners_px=pose.corners_px * k,
+        reproj_rms_px=pose.reproj_rms_px * k,
+        reproj_max_px=pose.reproj_max_px * k,
+        square_px=pose.square_px * k,
+        extent_px=(pose.extent_px[0] * k, pose.extent_px[1] * k),
+        image_size=(round(w * k), round(h * k)),
+        focal_px=pose.focal_px * k if pose.focal_px else None,
+    )
 
 
 def with_focal(pose: MarkerPose, focal_px: float, focal_std_px: float = 0.0) -> MarkerPose:

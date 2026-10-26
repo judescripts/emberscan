@@ -24,6 +24,7 @@ from .geometry import (
     estimate_focal_px,
     mask_to_frame,
     measure_track,
+    scale_pose,
     with_focal,
     zone_bands,
 )
@@ -39,13 +40,25 @@ log = logging.getLogger(__name__)
 _RANK = {"low": 0, "medium": 1, "high": 2}
 MASK_BGR = (30, 84, 217)  # ember, BGR
 WALL_BGR = (255, 255, 255)
+MAX_RANGE_FT = 6.0  # wider measured ranges are treated as not measured
 
 
-def _detect_all(frames: list[Path]) -> dict[int, MarkerPose | None]:
+def _detect_all(
+    frames: list[Path], hires: list[Path] | None = None
+) -> dict[int, MarkerPose | None]:
+    """Find the marker in every frame. When full-resolution copies of the same frames are given,
+    detect there (a small, slanted marker needs the pixels) and scale the pose down to the
+    frame size SAM's masks use."""
+    use_hi = hires is not None and len(hires) == len(frames)
+    k = 1.0
+    if use_hi:
+        lo, hi = cv2.imread(str(frames[0])), cv2.imread(str(hires[0]))
+        k = lo.shape[1] / hi.shape[1] if lo is not None and hi is not None else 1.0
     poses: dict[int, MarkerPose | None] = {}
-    for i, path in enumerate(frames):
+    for i, path in enumerate(hires if use_hi else frames):
         img = cv2.imread(str(path))
-        poses[i] = detect_marker(img) if img is not None else None
+        pose = detect_marker(img) if img is not None else None
+        poses[i] = scale_pose(pose, k) if pose is not None and k != 1.0 else pose
     focal = estimate_focal_px(poses.values())
     if focal is not None:
         f, std = focal
@@ -140,7 +153,7 @@ def measure_hazards(
     """Measure, zone and render evidence for every hazard (in place; returns the list)."""
     if not frames:
         return hazards
-    poses = _detect_all(frames)
+    poses = _detect_all(frames, job.marker_frames or None)
     seen = sum(1 for p in poses.values() if p is not None)
     log.info("marker found in %d/%d frames", seen, len(frames))
     bands = zone_bands([z.model_dump() for z in load_pack("us-ca").zones])
@@ -154,6 +167,8 @@ def measure_hazards(
             m = measure_track(track.masks, poses, contact_mode_for(h.cls))
         except Exception:  # never fail a scan over one track
             log.exception("measuring %s failed", h.id)
+        if m is not None and m.distance_ft.max - m.distance_ft.min > MAX_RANGE_FT:
+            m = None  # far from the marker: a 0-40 ft range says nothing; leave it to review
         if m is not None:
             _apply(h, m, bands)
             frame = m.best_frame.frame_index

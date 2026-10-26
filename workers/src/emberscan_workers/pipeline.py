@@ -43,6 +43,7 @@ STAGES = [
 ]
 SAM_FPS = float(os.environ.get("SAM_FPS", "3"))  # most frames per second sent to SAM
 MIN_SAM_FPS = float(os.environ.get("MIN_SAM_FPS", "1"))
+MARKER_SHORT_SIDE = 1080  # resolution for marker detection
 SAM_BUDGET_SHARE = 0.8  # of the per-run spend limit; the rest covers agent, eaves, narration
 
 
@@ -80,6 +81,7 @@ class ScanJob:
     )
     error: str | None = None
     sam_fps: float = SAM_FPS  # chosen per scan from the footage length (sam_fps_for)
+    marker_frames: list[Path] = field(default_factory=list)  # full-res twins of the SAM frames
     report: Report | None = None
     created_at: str = field(default_factory=lambda: datetime.now(UTC).isoformat())
 
@@ -249,6 +251,18 @@ async def run_scan(
         frames = await asyncio.to_thread(
             extract_frames, job.dir / "sam.mp4", job.dir / "frames", fps
         )
+        if (
+            min(src.width, src.height) > MARKER_SHORT_SIDE * 0.9
+            and min(src.width, src.height) > 720
+        ):
+            # Same timestamps at higher resolution, for finding a small, slanted marker.
+            await asyncio.to_thread(
+                normalize, job.video_path, job.dir / "marker.mp4", MARKER_SHORT_SIDE, 300.0, fps
+            )
+            hi = await asyncio.to_thread(
+                extract_frames, job.dir / "marker.mp4", job.dir / "frames_hi", fps
+            )
+            job.marker_frames = [f.path for f in hi]
         await p.set("frames", "done", f"{len(frames)} frames extracted")
 
         narration_task = asyncio.create_task(_narration(job, client, ledger, norm, p))

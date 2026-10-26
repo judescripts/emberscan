@@ -323,3 +323,17 @@ def test_far_hazard_is_low_confidence() -> None:
     assert m.marker_dist_ft > 15
     assert m.confidence == "low"
     assert m.min_ft <= 3.0 <= m.max_ft
+
+
+def test_scale_pose_matches_detection_on_the_smaller_frame(scenes) -> None:
+    from emberscan_workers.geometry import scale_pose
+
+    p, frame, pose = scenes[0]
+    assert pose is not None
+    small = cv2.resize(frame, None, fx=0.5, fy=0.5, interpolation=cv2.INTER_AREA)
+    scaled = scale_pose(pose, 0.5)
+    pts_hi = project(p, np.column_stack([marker_to_world(PTS_FAR), np.zeros(len(PTS_FAR))]))
+    # the same ground points, read from the half-size image with the scaled pose
+    assert np.allclose(scaled.to_ground(pts_hi * 0.5), pose.to_ground(pts_hi), atol=1e-6)
+    assert scaled.image_size == (small.shape[1], small.shape[0])
+    assert scaled.square_px == pytest.approx(pose.square_px / 2)

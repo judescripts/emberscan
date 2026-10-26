@@ -100,7 +100,8 @@ def normalize(
     max_duration_s: float = MAX_DURATION_S,
     fps: float | None = None,
 ) -> VideoInfo:
-    """Re-encode to H.264 MP4 at `height` px with rotation baked in; keep audio as AAC.
+    """Re-encode to H.264 MP4 with the short side at `height` px (portrait stays portrait) and
+    rotation baked in; keep audio as AAC.
 
     `fps` lowers the frame rate. SAM 3.1 bills per frame and has no stride parameter, so
     the copy sent to SAM is normalized at a low rate (e.g. 3 fps).
@@ -111,8 +112,9 @@ def normalize(
     if fps is not None and fps <= 0:
         raise ValueError("fps must be > 0")
     dst.parent.mkdir(parents=True, exist_ok=True)
-    # ffmpeg auto-rotates by default; scale keeps aspect and an even width.
-    vf = f"scale=-2:{height}" if fps is None else f"fps={fps},scale=-2:{height}"
+    # ffmpeg auto-rotates by default; scale the short side, keep aspect, even dimensions.
+    scale = f"scale='if(gt(iw,ih),-2,{height})':'if(gt(iw,ih),{height},-2)'"
+    vf = scale if fps is None else f"fps={fps},{scale}"
     _run(
         [
             _bin("ffmpeg"),

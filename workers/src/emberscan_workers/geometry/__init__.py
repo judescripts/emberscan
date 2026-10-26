@@ -12,6 +12,7 @@ from .marker import (
     detect_marker,
     estimate_focal_px,
     marker_object_points,
+    scale_pose,
     with_focal,
 )
 from .measure import (
@@ -46,6 +47,7 @@ __all__ = [
     "load_zone_bands",
     "mask_to_frame",
     "marker_object_points",
+    "scale_pose",
     "measure_frame",
     "measure_track",
     "with_focal",
