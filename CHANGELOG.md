@@ -13,3 +13,4 @@ All work happens during the hackathon (Oct 26 – Nov 4, 2026).
 ## Day 1 (continued)
 - Spend tracking (F3, part 1): Meta price table, cost functions for tokens, SAM frames (50-frame minimum), audio seconds and images, and a per-run ledger that blocks a call before it would exceed `SPEND_LIMIT_USD_PER_RUN`. 10 tests.
 - `docs/how-measurement-works.md`: how the printed marker, homography and uncertainty ranges turn video into feet.
+- Video pipeline (B1): ffprobe/ffmpeg wrappers to probe, normalize to H.264 720p, extract frames with timestamps, and extract 16 kHz mono WAV for Voice Transcribe. Tests use synthetic clips only; CI installs ffmpeg.
