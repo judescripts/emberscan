@@ -5,7 +5,7 @@ import { useState } from "react";
 import type { FixStatus, Responsibility } from "@/lib/db/schema";
 import type { RuleStatus } from "@/lib/report-types";
 import { filterTasks, STATUS_LABEL } from "@/lib/tasks";
-import { formatDate } from "@/lib/format";
+import { formatDate, respWords } from "@/lib/format";
 import { Citation, cx, inputClass, Pill, StatusPill } from "../ui";
 
 export interface TaskRow {
@@ -27,7 +27,8 @@ export interface TaskRow {
 
 const STATUSES: (FixStatus | "active")[] = ["active", "open", "progress", "fixed", "verified", "wontfix"];
 
-export function TaskList({ tasks }: { tasks: TaskRow[] }) {
+export function TaskList({ tasks, communityType }: { tasks: TaskRow[]; communityType?: string | null }) {
+  const words = respWords(communityType);
   const [resp, setResp] = useState<"all" | Responsibility>("all");
   const [status, setStatus] = useState<FixStatus | "active" | "all">("active");
   const shown = filterTasks(tasks, resp, status);
@@ -40,8 +41,8 @@ export function TaskList({ tasks }: { tasks: TaskRow[] }) {
           </label>
           <select id="task-owner" value={resp} onChange={(e) => setResp(e.target.value as typeof resp)} className={cx(inputClass, "mt-1")}>
             <option value="all">Everyone</option>
-            <option value="HOA">HOA</option>
-            <option value="Owner">Homeowners</option>
+            <option value="HOA">{words.HOA}</option>
+            <option value="Owner">{words.owners}</option>
             <option value="Unclear">Unclear</option>
           </select>
         </div>
@@ -72,7 +73,7 @@ export function TaskList({ tasks }: { tasks: TaskRow[] }) {
                 {t.ruleStatus && <StatusPill status={t.ruleStatus} />}
                 <Pill tone={t.status === "verified" ? "pass" : "neutral"}>{STATUS_LABEL[t.status]}</Pill>
                 <span className="text-xs text-muted">
-                  {t.responsibility === "Owner" ? "Homeowner" : t.responsibility} · {t.required ? "Required" : "Recommended"}
+                  {t.responsibility === "Unclear" ? "Unclear who" : words[t.responsibility]} · {t.required ? "Required" : "Recommended"}
                 </span>
               </div>
               <p className="mt-1 font-semibold text-ink">

@@ -9,7 +9,7 @@ export const TABS = [
   { href: "/", label: "Buildings", Icon: IconBuildings, match: (p: string) => p === "/" },
   { href: "/scan", label: "New scan", Icon: IconScan, match: (p: string) => p.startsWith("/scan") },
   { href: "/report", label: "Report", Icon: IconReport, match: (p: string) => p.startsWith("/report") },
-  { href: "/hoa", label: "HOA tasks", Icon: IconTasks, match: (p: string) => p.startsWith("/hoa") },
+  { href: "/hoa", label: "Tasks", Icon: IconTasks, match: (p: string) => p.startsWith("/hoa") },
 ];
 
 /** Phones: solid tab bar docked to the bottom edge, icons above labels. */

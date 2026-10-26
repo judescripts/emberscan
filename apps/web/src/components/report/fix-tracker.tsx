@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { updateTask } from "@/app/actions";
 import type { FixStatus, Responsibility } from "@/lib/db/schema";
+import { respWords } from "@/lib/format";
 import { STATUS_LABEL, USER_STATUSES } from "@/lib/tasks";
 import { buttonClass, cx, inputClass } from "../ui";
 
@@ -19,14 +20,19 @@ function noteDate(iso: string) {
   return Number.isNaN(d.getTime()) ? iso : d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
 }
 
-const RESP_OPTIONS: { value: Responsibility; label: string }[] = [
-  { value: "HOA", label: "HOA" },
-  { value: "Owner", label: "Homeowner" },
-  { value: "Unclear", label: "Unclear" },
-];
+const RESP_VALUES: Responsibility[] = ["HOA", "Owner", "Unclear"];
 
 /** Status chips, who's responsible, who it's assigned to and dated notes for one fix. "Verified" is shown but only a rescan can set it. */
-export function FixTracker({ task, readOnly }: { task: TaskView | null; readOnly?: boolean }) {
+export function FixTracker({
+  task,
+  readOnly,
+  communityType,
+}: {
+  task: TaskView | null;
+  readOnly?: boolean;
+  communityType?: string | null;
+}) {
+  const words = respWords(communityType);
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [owner, setOwner] = useState(task?.owner ?? "");
@@ -126,7 +132,8 @@ export function FixTracker({ task, readOnly }: { task: TaskView | null; readOnly
       <fieldset disabled={pending || readOnly}>
         <legend className="mb-1.5 text-xs font-semibold text-muted">Who&apos;s responsible</legend>
         <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label="Who is responsible">
-          {RESP_OPTIONS.map((o) => {
+          {RESP_VALUES.map((value) => {
+            const o = { value, label: words[value] };
             const active = task.responsibility === o.value;
             return (
               <button
@@ -145,7 +152,7 @@ export function FixTracker({ task, readOnly }: { task: TaskView | null; readOnly
             );
           })}
         </div>
-        <p className="mt-1 text-[11px] text-muted">Sets which list this fix appears in on HOA tasks.</p>
+        <p className="mt-1 text-[11px] text-muted">Sets which list this fix appears in on {words.tasks}.</p>
       </fieldset>
 
       <div className="grid gap-3 sm:grid-cols-2">

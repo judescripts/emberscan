@@ -133,6 +133,7 @@ async def create_scan(
     include_proposed: bool = Form(default=True),
     concepts: str | None = Form(default=None),
     clip_sides: str | None = Form(default=None),
+    community_type: str | None = Form(default=None),
 ) -> dict:
     """One or more walkaround clips (`video`, joined in order) plus optional corner clips."""
     corners = corner or []
@@ -187,6 +188,9 @@ async def create_scan(
         concepts=chosen,
         extra_clips=walks[1:],
         corner_clips=corner_paths,
+        site_type=community_type
+        if community_type in ("HOA", "Condo", "Home", "Commercial")
+        else "HOA",
         clip_sides=[
             s.strip().upper() if s.strip().upper() in ("N", "E", "S", "W") else ""
             for s in (clip_sides or "").split(",")

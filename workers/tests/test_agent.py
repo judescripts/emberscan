@@ -151,3 +151,21 @@ def test_agent_falls_back_when_model_never_submits(tools: ScanTools) -> None:
     res = asyncio.run(run())
     assert {r for f in res.fixes for r in f.rule_ids} >= {"Z1-04"}
     assert res.trace[-1].kind == "note"
+
+
+def test_api_failure_retries_then_falls_back(monkeypatch, tools: ScanTools) -> None:
+    import asyncio
+
+    from emberscan_workers.meta import agent as A
+
+    calls = {"n": 0}
+
+    async def boom(*args, **kwargs):
+        calls["n"] += 1
+        raise RuntimeError("referenced response not found or expired")
+
+    monkeypatch.setattr(A, "_run_agent_once", boom)
+    res = asyncio.run(A.run_agent(None, SpendLedger("t", 1.0), tools, site_type="Commercial"))
+    assert calls["n"] == 2
+    assert res.fixes and all(f.rule_ids for f in res.fixes)  # rule-based plan
+    assert [s.kind for s in res.trace][-1] == "note"

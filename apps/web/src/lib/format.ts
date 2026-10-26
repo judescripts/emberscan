@@ -141,8 +141,17 @@ export function costWords(c: Fix["cost_band"]): string {
   }
 }
 
-export function ownerWords(o: Fix["owner"]): string {
-  return o === "HOA" ? "HOA" : o === "Owner" ? "Homeowner" : "Owner unclear";
+/** Who's-responsible wording for a community type. Stored values stay HOA / Owner / Unclear. */
+export function respWords(type?: string | null) {
+  if (type === "Commercial")
+    return { HOA: "Property manager", Owner: "Tenant", Unclear: "Unclear", owners: "Tenants", tasks: "Site tasks" };
+  if (type === "Home") return { HOA: "HOA", Owner: "Homeowner", Unclear: "Unclear", owners: "Homeowner", tasks: "Tasks" };
+  return { HOA: "HOA", Owner: "Homeowner", Unclear: "Unclear", owners: "Homeowners", tasks: "HOA tasks" };
+}
+
+export function ownerWords(o: Fix["owner"], type?: string | null): string {
+  const w = respWords(type);
+  return o === "Unclear" ? "Unclear who" : w[o];
 }
 
 /** 13320 -> "0:13". */

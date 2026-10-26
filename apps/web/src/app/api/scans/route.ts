@@ -39,6 +39,7 @@ export async function POST(request: Request) {
   const fields: [string, string][] = [
     ["building_label", building.label],
     ["include_proposed", String(community?.includeProposed ?? true)],
+    ["community_type", community?.type ?? "HOA"],
   ];
   if (building.eaveMode === "known" && building.eaveFt) fields.push(["eave_depth_ft", String(building.eaveFt)]);
   if (building.eaveMode === "none") fields.push(["eave_depth_ft", "0"]);

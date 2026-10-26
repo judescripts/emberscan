@@ -16,7 +16,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from ..contracts import AgentStep, Fix, Hazard, RuleResult
-from ..spend import SpendLedger, token_cost
+from ..spend import SpendLedger, SpendLimitExceeded, token_cost
 from .client import MetaClient
 from .voice import Transcript
 
@@ -323,8 +323,57 @@ def verify_plan(plan: dict, tools: ScanTools) -> tuple[list[Fix], list[str], lis
     return ordered, dropped, blocking
 
 
+AUDIENCE = {
+    "Commercial": (
+        "This is a COMMERCIAL property. Write for a property manager. In the owner field, "
+        '"HOA" means the property manager (shared landscaping, the building exterior) and '
+        '"Owner" means a tenant (items at a tenant\'s own entrance, patio or storage). In the '
+        'text say "property manager" or "tenant"; never say homeowner, HOA or HOA board.'
+    ),
+    "Home": (
+        'This is a single home. Write for the homeowner; use "Owner" for nearly everything and '
+        "never mention an HOA."
+    ),
+}
+
+
 async def run_agent(
-    client: MetaClient, ledger: SpendLedger, tools: ScanTools, model: str = DEFAULT_MODEL
+    client: MetaClient,
+    ledger: SpendLedger,
+    tools: ScanTools,
+    model: str = DEFAULT_MODEL,
+    site_type: str = "HOA",
+) -> AgentResult:
+    """Plan fixes; one fresh retry if the API drops the conversation, then the rule-based plan.
+    A flaky model call never fails the scan."""
+    instructions = SYSTEM + ("\n" + AUDIENCE[site_type] if site_type in AUDIENCE else "")
+    notes: list[AgentStep] = []
+    for attempt in (1, 2):
+        try:
+            result = await _run_agent_once(client, ledger, tools, model, instructions)
+            result.trace[:0] = notes
+            return result
+        except SpendLimitExceeded:
+            raise
+        except Exception as e:  # e.g. "referenced response not found or expired"
+            notes.append(
+                AgentStep(
+                    kind="note",
+                    summary=f"Model call failed ({type(e).__name__}); "
+                    + ("retrying with a fresh conversation." if attempt == 1 else "giving up."),
+                    detail={"error": str(e)[:300]},
+                )
+            )
+    notes.append(AgentStep(kind="note", summary="Using the rule-based fallback plan."))
+    return AgentResult(fallback_plan(tools), "Fixes listed from the rule results.", notes)
+
+
+async def _run_agent_once(
+    client: MetaClient,
+    ledger: SpendLedger,
+    tools: ScanTools,
+    model: str,
+    instructions: str,
 ) -> AgentResult:
     trace: list[AgentStep] = [
         AgentStep(
@@ -342,7 +391,7 @@ async def run_agent(
 
     body: dict[str, Any] = {
         "model": model,
-        "instructions": SYSTEM,
+        "instructions": instructions,
         "tools": TOOLS,
         "tool_choice": "auto",
         "reasoning": {"effort": "low"},

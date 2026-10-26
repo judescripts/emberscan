@@ -4,9 +4,10 @@ import { Suspense } from "react";
 import { TaskList, type TaskRow } from "@/components/hoa/task-list";
 import { ButtonLink, Card, PageHeader, SampleBadge, ScoreBadge, SectionTitle, ShortDisclaimer, Skeleton } from "@/components/ui";
 import { currentContext } from "@/lib/current";
+import { respWords } from "@/lib/format";
 import { latestDone, listBuildings, listScans, listTasks } from "@/lib/db/queries";
 
-export const metadata: Metadata = { title: "HOA tasks" };
+export const metadata: Metadata = { title: "Tasks" };
 
 export default function HoaPage() {
   return (
@@ -65,7 +66,7 @@ async function Hoa() {
   return (
     <>
       <PageHeader
-        title="HOA tasks"
+        title={respWords(current.type).tasks}
         kicker={
           <span className="flex items-center gap-2">
             {current.isSample && <SampleBadge />}
@@ -84,8 +85,8 @@ async function Hoa() {
                 <th scope="col" className="py-2 pr-3 font-semibold">Score</th>
                 <th scope="col" className="py-2 pr-3 font-semibold">Fails</th>
                 <th scope="col" className="py-2 pr-3 font-semibold">Need review</th>
-                <th scope="col" className="py-2 pr-3 font-semibold">HOA tasks</th>
-                <th scope="col" className="py-2 pr-3 font-semibold">Owner tasks</th>
+                <th scope="col" className="py-2 pr-3 font-semibold">{respWords(current.type).HOA}</th>
+                <th scope="col" className="py-2 pr-3 font-semibold">{respWords(current.type).owners}</th>
               </tr>
             </thead>
             <tbody>
@@ -127,7 +128,7 @@ async function Hoa() {
       </Card>
       <Card>
         <SectionTitle kicker="Fix plan across the community">All tasks</SectionTitle>
-        <TaskList tasks={taskRows} />
+        <TaskList tasks={taskRows} communityType={current.type} />
       </Card>
     </>
   );

@@ -74,6 +74,7 @@ class ScanJob:
     # More walkaround clips after video_path (joined in order) and corner clips for eave depth.
     extra_clips: list[Path] = field(default_factory=list)
     corner_clips: list[Path] = field(default_factory=list)
+    site_type: str = "HOA"  # community type: HOA | Condo | Home | Commercial (agent wording)
     clip_sides: list[str] = field(
         default_factory=list
     )  # N/E/S/W per walkaround clip, "" if unknown
@@ -366,7 +367,12 @@ async def run_scan(
         )
 
         await p.set("agent", "running", "Muse Spark is planning fixes")
-        agent = await run_agent(client, ledger, ScanTools(hazards, engine.results, transcript, fps))
+        agent = await run_agent(
+            client,
+            ledger,
+            ScanTools(hazards, engine.results, transcript, fps),
+            site_type=job.site_type,
+        )
         await p.set(
             "agent",
             "done",

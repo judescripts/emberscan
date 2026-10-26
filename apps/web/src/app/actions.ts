@@ -11,6 +11,7 @@ import { buildings, communities, fixTasks, scans, type CommunityType, type FixNo
 import { SAMPLE_REPORT, SAMPLE_STAGES } from "@/lib/db/seed";
 import { PACK_OPTIONS } from "@/lib/rules";
 import { isUserSettable } from "@/lib/tasks";
+import { respWords } from "@/lib/format";
 import { workerResearch } from "@/lib/worker";
 
 // Hackathon scope: no accounts yet, so actions validate input but not identity.
@@ -144,7 +145,6 @@ export async function loadSampleReport(buildingId: string) {
 export type TaskUpdate = { status?: string; owner?: string; note?: string; responsibility?: string };
 
 const RESPONSIBILITIES: Responsibility[] = ["HOA", "Owner", "Unclear"];
-const RESP_WORDS: Record<Responsibility, string> = { HOA: "HOA", Owner: "Homeowner", Unclear: "Unclear" };
 
 export async function updateTask(taskId: string, update: TaskUpdate): Promise<FormState> {
   const db = await getDb();
@@ -176,10 +176,12 @@ export async function updateTask(taskId: string, update: TaskUpdate): Promise<Fo
   }
   if (update.responsibility !== undefined && update.responsibility !== task.responsibility) {
     if (!RESPONSIBILITIES.includes(update.responsibility as Responsibility)) {
-      return { ok: false, error: "Pick HOA, Homeowner or Unclear." };
+      return { ok: false, error: "Pick who is responsible." };
     }
     patch.responsibility = update.responsibility as Responsibility;
-    notes.push({ text: `Responsibility: ${RESP_WORDS[patch.responsibility]}`, at: when, by });
+    const building = await getBuilding(db, task.buildingId);
+    const community = building ? await getCommunity(db, building.communityId) : null;
+    notes.push({ text: `Responsibility: ${respWords(community?.type)[patch.responsibility]}`, at: when, by });
   }
   if (update.owner !== undefined) patch.owner = update.owner.trim().slice(0, 80);
   patch.notes = notes;
