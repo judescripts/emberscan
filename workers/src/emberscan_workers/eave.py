@@ -31,7 +31,7 @@ from .meta import MetaClient
 from .spend import SpendLedger, token_cost
 
 MODEL = os.environ.get("EAVE_MODEL", os.environ.get("AGENT_MODEL", "muse-spark-1.3-contributor"))
-MAX_IMAGES = 6
+MAX_IMAGES = 8
 IMAGE_WIDTH = 1024
 EST_TOKENS = (6_000, 1_500)  # worst case per request, for the spend check
 PLAUSIBLE_FT = (0.25, 6.0)
@@ -42,10 +42,11 @@ from the ground up to the roofline. A printed checkerboard of exact 1 inch squar
 may lie flat on the ground against the wall base, for scale.
 Estimate how far the eave sticks out horizontally from the wall face, in feet.
 Reply with JSON only:
-{"visible": true|false, "min_ft": number, "max_ft": number, "confidence": "low"|"medium",
- "reason": "one short sentence on what you compared"}
-Give an honest range (wider when unsure); if corners differ, cover all of them.
-If no overhang is visible, set visible to false."""
+{"overhang": "yes"|"none"|"unclear", "min_ft": number, "max_ft": number,
+ "confidence": "low"|"medium", "reason": "one short sentence on what you compared"}
+"none": the roofline is clearly visible and the wall rises straight to it (flat roof, parapet,
+no projecting eave). "unclear": the roofline is not visible well enough to tell.
+For "yes", give an honest range (wider when unsure); if corners differ, cover all of them."""
 
 
 class EaveEstimate(BaseModel):
@@ -53,6 +54,7 @@ class EaveEstimate(BaseModel):
     confidence: str  # "low" | "medium"
     reason: str
     method: str = "visual"
+    overhang: str = "yes"  # "yes" | "none" (flat roof or parapet: no eave strip)
     frames: list[str] = []  # evidence images, relative to the scan dir
     model: str = MODEL
 
@@ -100,7 +102,16 @@ def parse_answer(text: str) -> EaveEstimate | None:
         return None
     try:
         d = json.loads(m.group(0))
-        if not d.get("visible"):
+        overhang = d.get("overhang", "yes" if d.get("visible") else "unclear")
+        if overhang == "none":
+            return EaveEstimate(
+                depth_ft=Range(min=0.0, max=0.0),
+                confidence="medium",
+                reason=str(d.get("reason", ""))[:200]
+                or "No roof overhang: walls rise to the roofline.",
+                overhang="none",
+            )
+        if overhang != "yes":
             return None
         lo, hi = sorted((float(d["min_ft"]), float(d["max_ft"])))
     except (ValueError, KeyError, TypeError):
@@ -129,7 +140,7 @@ async def estimate_eave(
     client: MetaClient, ledger: SpendLedger, corners: list[Path], scan_dir: Path
 ) -> EaveEstimate | None:
     """Estimate eave depth from corner clips; None when it can't be seen."""
-    per_clip = max(1, MAX_IMAGES // max(len(corners), 1))
+    per_clip = max(2, MAX_IMAGES // max(len(corners), 1))  # ground + roofline
     picked: list[Path] = []
     for i, clip in enumerate(corners[:MAX_IMAGES]):
         work = scan_dir / "corners" / f"c{i}"

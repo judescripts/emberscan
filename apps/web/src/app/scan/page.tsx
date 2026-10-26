@@ -71,9 +71,11 @@ async function FormSection({ searchParams }: { searchParams: PageProps<"/scan">[
         id: b.id,
         label: b.label,
         eave:
-          b.eaveMode === "known" && b.eaveFt
-            ? `Eave depth: ${b.eaveFt} ft (entered)`
-            : "Eave depth: measured from the video (film one corner from below for 3 s)",
+          b.eaveMode === "none"
+            ? "No eave overhang (entered): no corner clips needed"
+            : b.eaveMode === "known" && b.eaveFt
+              ? `Eave depth: ${b.eaveFt} ft (entered)`
+              : "Eave depth: estimated from corner clips (3–5 s each, filmed along the wall)",
       }))}
     />
   );

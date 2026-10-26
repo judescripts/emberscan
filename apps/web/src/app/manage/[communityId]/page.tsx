@@ -80,7 +80,11 @@ async function Edit({ params }: { params: PageProps<"/manage/[communityId]">["pa
                             {b.address && <p className="text-xs text-muted">{b.address}</p>}
                             <p className="text-xs text-muted">
                               {b.units ? `Units ${b.units} · ` : ""}
-                              {b.eaveMode === "known" && b.eaveFt ? `Eaves ${b.eaveFt} ft` : "Eaves measured from video"}
+                              {b.eaveMode === "none"
+                                ? "No eave overhang"
+                                : b.eaveMode === "known" && b.eaveFt
+                                  ? `Eaves ${b.eaveFt} ft`
+                                  : "Eaves measured from video"}
                             </p>
                             {summary ? (
                               <p className="text-xs text-muted">

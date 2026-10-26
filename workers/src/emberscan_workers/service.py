@@ -171,7 +171,11 @@ async def create_scan(
     if concepts:
         names = [c.strip() for c in concepts.split(",") if c.strip()]
         chosen = [BY_CLASS[n] for n in names if n in BY_CLASS] or chosen
-    eave = Range(min=eave_depth_ft, max=eave_depth_ft) if eave_depth_ft else None
+    eave = (  # 0 is a real answer: no overhang (flat roof, parapet)
+        Range(min=eave_depth_ft, max=eave_depth_ft)
+        if eave_depth_ft is not None and 0 <= eave_depth_ft <= 10
+        else None
+    )
     job = ScanJob(
         scan_id=scan_id,
         dir=d,

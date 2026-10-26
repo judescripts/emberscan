@@ -101,7 +101,7 @@ export interface BuildingValues {
   communityId: string;
   label: string;
   units: string;
-  eaveMode: "video" | "known";
+  eaveMode: "video" | "known" | "none";
   eaveFt: number | null;
   address: string;
 }
@@ -161,6 +161,10 @@ export function BuildingForm({ values, onDone }: { values: BuildingValues; onDon
             <input type="radio" name="eave_mode" value="known" checked={mode === "known"} onChange={() => setMode("known")} className="accent-[var(--brand)]" />
             I know it
           </label>
+          <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-line bg-surface px-3 py-2 text-sm has-[:checked]:border-brand has-[:checked]:bg-soft">
+            <input type="radio" name="eave_mode" value="none" checked={mode === "none"} onChange={() => setMode("none")} className="accent-[var(--brand)]" />
+            No overhang
+          </label>
           {mode === "known" && (
             <span className="flex items-center gap-2">
               <label htmlFor={`${f}-eave`} className="sr-only">
@@ -181,7 +185,10 @@ export function BuildingForm({ values, onDone }: { values: BuildingValues; onDon
             </span>
           )}
         </div>
-        <p className="mt-1 text-xs text-muted">Some proposed Zone 0 rules reach as far as the eaves stick out.</p>
+        <p className="mt-1 text-xs text-muted">
+          Some proposed Zone 0 rules reach as far as the eaves stick out. Flat roof or parapet with nothing sticking out? Choose
+          “No overhang” and skip the corner clips.
+        </p>
       </fieldset>
       <Message state={state} />
       <div>

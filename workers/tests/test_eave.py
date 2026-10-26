@@ -18,5 +18,12 @@ def test_wide_range_is_low_confidence_and_clamped() -> None:
 
 def test_not_visible_or_garbage_is_none() -> None:
     assert parse_answer('{"visible": false, "min_ft": 0, "max_ft": 0}') is None
+    assert parse_answer('{"overhang": "unclear", "min_ft": 0, "max_ft": 0}') is None
     assert parse_answer("no json here") is None
     assert parse_answer('{"visible": true, "min_ft": "a", "max_ft": 2}') is None
+
+
+def test_flat_roof_is_zero_overhang() -> None:
+    e = parse_answer('{"overhang": "none", "min_ft": 0, "max_ft": 0, "reason": "parapet"}')
+    assert e is not None and e.overhang == "none"
+    assert (e.depth_ft.min, e.depth_ft.max) == (0.0, 0.0)

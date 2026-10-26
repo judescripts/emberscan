@@ -41,6 +41,7 @@ export async function POST(request: Request) {
     ["include_proposed", String(community?.includeProposed ?? true)],
   ];
   if (building.eaveMode === "known" && building.eaveFt) fields.push(["eave_depth_ft", String(building.eaveFt)]);
+  if (building.eaveMode === "none") fields.push(["eave_depth_ft", "0"]);
   const prefix = new TextEncoder().encode(fields.map(([k, v]) => fieldPart(boundary, k, v)).join(""));
 
   const { readable, writable } = new TransformStream<Uint8Array, Uint8Array>();

@@ -54,7 +54,9 @@ async function ReportView({ params }: { params: PageProps<"/report/[scanId]">["p
   const isLatest = history.find((s) => s.status === "done" && s.report)?.id === scan.id;
   const z0 = report.score;
   const eave = report.eave_depth_ft
-    ? report.eave_source === "corner_video"
+    ? report.eave_depth_ft.max === 0
+      ? `No eave overhang (${report.eave_source === "corner_video" ? "seen in corner clips" : "entered"})`
+      : report.eave_source === "corner_video"
       ? `Eaves about ${formatRange(report.eave_depth_ft)} deep (estimated from corner clips, ${report.eave_estimate?.confidence ?? "low"} confidence)`
       : report.eave_source === "entered"
         ? `Eaves ${formatRange(report.eave_depth_ft)} deep (entered)`

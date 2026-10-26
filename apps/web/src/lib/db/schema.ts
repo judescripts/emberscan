@@ -2,7 +2,7 @@ import { boolean, index, integer, jsonb, pgTable, real, text, timestamp, uniqueI
 import type { BuildingNote, Report, WorkerStage } from "../report-types";
 
 export type CommunityType = "HOA" | "Condo" | "Home" | "Commercial";
-export type EaveMode = "video" | "known";
+export type EaveMode = "video" | "known" | "none"; // "none": no overhang (flat roof, parapet)
 export type FixStatus = "open" | "progress" | "fixed" | "verified" | "wontfix";
 export type Responsibility = "HOA" | "Owner" | "Unclear";
 export interface FixNote {

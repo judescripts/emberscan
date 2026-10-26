@@ -415,5 +415,8 @@ async def _eaves(
         await p.set("eaves", "done", "Overhang not visible in the corner clips")
         return None
     r = est.depth_ft
-    await p.set("eaves", "done", f"About {r.min:g}-{r.max:g} ft ({est.confidence} confidence)")
+    if est.overhang == "none":
+        await p.set("eaves", "done", "No eave overhang (flat roof or parapet)")
+    else:
+        await p.set("eaves", "done", f"About {r.min:g}-{r.max:g} ft ({est.confidence} confidence)")
     return est
