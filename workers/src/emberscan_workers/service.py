@@ -46,7 +46,7 @@ def _load_env_file() -> None:
 _load_env_file()
 DATA_DIR = Path(os.environ.get("WORKER_DATA_DIR", REPO_ROOT / "workers" / ".data" / "scans"))
 MAX_UPLOAD_BYTES = 500 * 1024 * 1024
-MAX_CLIPS = 12
+MAX_CLIPS = 40
 ALLOWED_EXT = {".mp4", ".mov", ".m4v"}
 SCAN_ID = re.compile(r"^[a-z0-9-]{8,64}$")
 

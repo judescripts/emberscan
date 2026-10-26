@@ -27,6 +27,7 @@ from .meta.sam import SegmentationResult, Track, segment_video
 from .meta.voice import Transcript, transcribe
 from .rules import evaluate, load_pack
 from .spend import SpendLedger, SpendLimitExceeded
+from .spend.pricing import SAM_USD_PER_1K_FRAMES, sam_video_cost
 
 STAGES = [
     "upload",
@@ -40,7 +41,20 @@ STAGES = [
     "agent",
     "report",
 ]
-SAM_FPS = float(os.environ.get("SAM_FPS", "3"))
+SAM_FPS = float(os.environ.get("SAM_FPS", "3"))  # most frames per second sent to SAM
+MIN_SAM_FPS = float(os.environ.get("MIN_SAM_FPS", "1"))
+SAM_BUDGET_SHARE = 0.8  # of the per-run spend limit; the rest covers agent, eaves, narration
+
+
+def sam_fps_for(duration_s: float, n_concepts: int, run_limit_usd: float) -> float:
+    """Frame rate for SAM so every concept fits in the run budget (SAM bills per frame per
+    concept): long footage gets fewer frames per second, down to MIN_SAM_FPS."""
+    if duration_s <= 0 or n_concepts <= 0:
+        return SAM_FPS
+    frames = SAM_BUDGET_SHARE * run_limit_usd / (n_concepts * SAM_USD_PER_1K_FRAMES / 1000)
+    return round(max(MIN_SAM_FPS, min(SAM_FPS, frames / duration_s)), 2)
+
+
 SAM_CONCURRENCY = int(os.environ.get("SAM_CONCURRENCY", "6"))
 MIN_TRACK_FRAMES = 3
 MIN_SAM_CONFIDENCE = 0.3
@@ -65,6 +79,7 @@ class ScanJob:
         default_factory=lambda: [{"name": s, "status": "pending", "detail": ""} for s in STAGES]
     )
     error: str | None = None
+    sam_fps: float = SAM_FPS  # chosen per scan from the footage length (sam_fps_for)
     report: Report | None = None
     created_at: str = field(default_factory=lambda: datetime.now(UTC).isoformat())
 
@@ -209,22 +224,30 @@ async def run_scan(
             clips = [vars(s) for s in spans]
             job.video_path = job.dir / "joined.mp4"
         src = probe(job.video_path)
+        job.sam_fps = fps = sam_fps_for(src.duration_s, len(job.concepts), ledger.limit_usd)
+        sam_est = sam_video_cost(round(src.duration_s * fps), requests=len(job.concepts))
+        if sam_est > SAM_BUDGET_SHARE * ledger.limit_usd:
+            raise SpendLimitExceeded(
+                f"{src.duration_s / 60:.1f} min of footage needs about ${sam_est:.2f} of SAM 3.1 "
+                f"tracking, over this scan's ${ledger.limit_usd:.2f} limit. Split it into two "
+                "scans (for example two sides each)."
+            )
         eave_task = asyncio.create_task(_eaves(job, client, ledger, p))
         norm = await asyncio.to_thread(normalize, job.video_path, job.dir / "normalized.mp4")
         sam_video = await asyncio.to_thread(
-            normalize, job.video_path, job.dir / "sam.mp4", 720, 300.0, SAM_FPS
+            normalize, job.video_path, job.dir / "sam.mp4", 720, 300.0, fps
         )
         await p.set(
             "normalize",
             "done",
             (f"{len(clips)} clips joined · " if clips else "")
             + f"{src.duration_s:.0f}s video · {norm.width}x{norm.height} · "
-            f"{sam_video.frame_count} frames at {SAM_FPS:g} fps for SAM 3.1",
+            f"{sam_video.frame_count} frames at {fps:g} fps for SAM 3.1",
         )
 
         await p.set("frames", "running")
         frames = await asyncio.to_thread(
-            extract_frames, job.dir / "sam.mp4", job.dir / "frames", SAM_FPS
+            extract_frames, job.dir / "sam.mp4", job.dir / "frames", fps
         )
         await p.set("frames", "done", f"{len(frames)} frames extracted")
 
@@ -238,7 +261,7 @@ async def run_scan(
             for tid, t in r.tracks.items()
             if r.concept in BY_CLASS_BY_PROMPT
         }
-        hazards = hazards_from_tracks(results, SAM_FPS)
+        hazards = hazards_from_tracks(results, fps)
         hazards = await asyncio.to_thread(measure, hazards, tracks, [f.path for f in frames], job)
         measured = sum(1 for h in hazards if h.distance_ft is not None)
         await p.set(
@@ -246,7 +269,7 @@ async def run_scan(
         )
 
         transcript = await narration_task
-        attach_narration(hazards, transcript, SAM_FPS)
+        attach_narration(hazards, transcript, fps)
 
         estimate = await eave_task
         eave, eave_source = job.eave_depth_ft, ("entered" if job.eave_depth_ft else None)
@@ -265,9 +288,7 @@ async def run_scan(
         )
 
         await p.set("agent", "running", "Muse Spark is planning fixes")
-        agent = await run_agent(
-            client, ledger, ScanTools(hazards, engine.results, transcript, SAM_FPS)
-        )
+        agent = await run_agent(client, ledger, ScanTools(hazards, engine.results, transcript, fps))
         await p.set(
             "agent",
             "done",
@@ -288,7 +309,7 @@ async def run_scan(
                 "fps": src.fps,
                 "width": norm.width,
                 "height": norm.height,
-                "sam_fps": SAM_FPS,
+                "sam_fps": fps,
                 "clips": clips,
                 "corner_clips": len(job.corner_clips),
             },

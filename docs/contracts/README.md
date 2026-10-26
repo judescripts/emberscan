@@ -10,7 +10,7 @@ Base URL from `WORKER_URL` (default `http://localhost:8000`). Bearer `WORKER_TOK
 
 | Method | Path | Body / query | Returns |
 |---|---|---|---|
-| `POST` | `/scans` | multipart: `video` (one or more walkaround files, joined in order), `corner` (optional, corner clips for eave depth; up to 12 files total), `building_label`, `eave_depth_ft` (optional number), `include_proposed` (bool, default true), `concepts` (optional comma list) | `{ "scan_id": "..." }` (202) |
+| `POST` | `/scans` | multipart: `video` (one or more walkaround files, joined in order), `corner` (optional, corner clips for eave depth; up to 40 files total), `building_label`, `eave_depth_ft` (optional number), `include_proposed` (bool, default true), `concepts` (optional comma list) | `{ "scan_id": "..." }` (202) |
 | `POST` | `/research` | JSON `{ "address": "..." }` | Cited building note (Muse Spark + public map data), synchronous |
 | `GET` | `/budget` | | Spend so far, caps, scans left today |
 | `GET` | `/scans/{scan_id}` | — | `{ scan_id, status: "queued" \| "processing" \| "done" \| "failed", stage, progress (0–1), stages: [{name, status, detail}], error?, report? }` |

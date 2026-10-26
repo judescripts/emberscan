@@ -144,7 +144,6 @@ def measure_hazards(
     seen = sum(1 for p in poses.values() if p is not None)
     log.info("marker found in %d/%d frames", seen, len(frames))
     bands = zone_bands([z.model_dump() for z in load_pack("us-ca").zones])
-    from .pipeline import SAM_FPS
 
     for h in hazards:
         track = tracks.get(h.id)
@@ -181,7 +180,7 @@ def measure_hazards(
             h.evidence = [
                 Evidence(
                     frame_index=frame,
-                    timestamp_ms=int(frame * 1000 / SAM_FPS),
+                    timestamp_ms=int(frame * 1000 / job.sam_fps),
                     bbox=bbox,
                     image_path=rel.as_posix(),
                 )

@@ -77,3 +77,14 @@ def test_ledger_summary_groups_by_stage_and_model() -> None:
 def test_limit_from_env(monkeypatch) -> None:
     monkeypatch.setenv("SPEND_LIMIT_USD_PER_RUN", "0.25")
     assert SpendLedger.from_env("r3").limit_usd == 0.25
+
+
+def test_sam_fps_scales_down_for_long_footage() -> None:
+    from emberscan_workers.pipeline import MIN_SAM_FPS, SAM_FPS, sam_fps_for
+    from emberscan_workers.spend import sam_video_cost
+
+    assert sam_fps_for(10, 12, 0.5) == SAM_FPS  # short clip: full rate
+    fps = sam_fps_for(150, 12, 0.5)
+    assert MIN_SAM_FPS <= fps < SAM_FPS
+    assert sam_video_cost(int(150 * fps), requests=12) <= 0.8 * 0.5 + 1e-9
+    assert sam_fps_for(3000, 12, 0.5) == MIN_SAM_FPS
