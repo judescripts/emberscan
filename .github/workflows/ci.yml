@@ -40,6 +40,13 @@ jobs:
           python-version: "3.12"
           cache: pip
           cache-dependency-path: workers/pyproject.toml
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: workers/sam-parser/package-lock.json
+      - run: npm ci && npm test
+        working-directory: workers/sam-parser
       - run: sudo apt-get update && sudo apt-get install -y ffmpeg
       - run: pip install -e ".[dev]"
       - run: ruff check .

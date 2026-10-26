@@ -1,0 +1,15 @@
+{
+  "name": "@emberscan/sam-parser",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Turns a recorded SAM 3.1 Responses event stream into tracks (boxes + box-local COCO RLE masks). Called by the Python workers.",
+  "type": "module",
+  "bin": { "sam-parse": "./index.mjs" },
+  "scripts": {
+    "test": "node --test"
+  },
+  "engines": { "node": ">=22.9" },
+  "dependencies": {
+    "@meta-sam/parser": "0.1.0"
+  }
+}

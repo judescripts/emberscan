@@ -86,17 +86,28 @@ def probe(video: Path) -> VideoInfo:
 
 
 def normalize(
-    src: Path, dst: Path, height: int = 720, max_duration_s: float = MAX_DURATION_S
+    src: Path,
+    dst: Path,
+    height: int = 720,
+    max_duration_s: float = MAX_DURATION_S,
+    fps: float | None = None,
 ) -> VideoInfo:
-    """Re-encode to H.264 MP4 at `height` px with rotation baked in; keep audio as AAC."""
+    """Re-encode to H.264 MP4 at `height` px with rotation baked in; keep audio as AAC.
+
+    `fps` lowers the frame rate. SAM 3.1 bills per frame and has no stride parameter, so
+    the copy sent to SAM is normalized at a low rate (e.g. 3 fps).
+    """
     info = probe(src)
     if info.duration_s > max_duration_s:
         raise MediaError(f"video is {info.duration_s:.0f}s; the limit is {max_duration_s:.0f}s")
+    if fps is not None and fps <= 0:
+        raise ValueError("fps must be > 0")
     dst.parent.mkdir(parents=True, exist_ok=True)
     # ffmpeg auto-rotates by default; scale keeps aspect and an even width.
+    vf = f"scale=-2:{height}" if fps is None else f"fps={fps},scale=-2:{height}"
     _run([
         _bin("ffmpeg"), "-v", "error", "-y", "-i", str(src),
-        "-vf", f"scale=-2:{height}", "-c:v", "libx264", "-preset", "veryfast", "-crf", "23",
+        "-vf", vf, "-c:v", "libx264", "-preset", "veryfast", "-crf", "23",
         "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "96k", "-movflags", "+faststart",
         str(dst),
     ])
