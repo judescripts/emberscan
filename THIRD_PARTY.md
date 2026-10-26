@@ -18,6 +18,12 @@ Every library, model, dataset and asset used by EmberScan, with its license. Upd
 | Tailwind CSS | 4.x | MIT | Styling |
 | TypeScript | 5.x | Apache-2.0 | Type checking |
 | ESLint, eslint-config-next | 9.x / 16.4.3 | MIT | Linting |
+| Drizzle ORM | 0.45.4 | Apache-2.0 | Database access |
+| drizzle-kit | 0.31.11 | MIT | Migrations (dev) |
+| PGlite (@electric-sql/pglite) | 0.5.8 | Apache-2.0 | Local embedded Postgres (dev/demo) |
+| @neondatabase/serverless | 1.2.0 | MIT | Hosted Postgres driver |
+| Vitest | 4.1.11 | MIT | Web tests |
+| tsx | 4.23.15 | MIT | Running TS scripts (dev) |
 | Geist, Geist Mono (via next/font) | — | SIL Open Font License 1.1 | UI fonts |
 | Pydantic | 2.x | MIT | Rule pack and output schemas |
 | NumPy | 2.x | BSD-3-Clause | Image math (sharpness, hashing) |

@@ -1,39 +1,138 @@
-const STEPS = [
-  { name: "Track", detail: "SAM 3.1 follows every hazard across the walkaround video." },
-  { name: "Measure", detail: "A printed scale marker turns pixels into feet, with ranges." },
-  { name: "Check", detail: "A deterministic rules engine cites each California rule." },
-  { name: "Plan", detail: "A Muse Spark agent builds the fix plan from those results." },
-];
+import Link from "next/link";
+import { Suspense } from "react";
+import { ButtonLink, Card, PageHeader, Pill, SampleBadge, ScoreBadge, ShortDisclaimer, Skeleton } from "@/components/ui";
+import { currentContext } from "@/lib/current";
+import { latestDone, listBuildings, listScans } from "@/lib/db/queries";
+import { scoreLabel } from "@/lib/score";
+import { firstCitation, pipelineSummary } from "@/lib/summary";
 
-export default function Home() {
+export default function BuildingsPage() {
   return (
-    <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-8 px-4 py-12">
-      <header className="flex flex-col gap-3">
-        <p className="text-sm font-semibold uppercase tracking-wider text-stone-500">
-          EmberScan · in development
-        </p>
-        <h1 className="text-3xl font-bold text-stone-900">
-          A walkaround video in, a measured wildfire fix plan out.
-        </h1>
-        <p className="text-stone-600">
-          Built during the Meta Global AI Developer Hackathon, Oct 26 – Nov 4, 2026.
-        </p>
-      </header>
-      <ol className="flex flex-col gap-3">
-        {STEPS.map((step, i) => (
-          <li key={step.name} className="flex gap-4 rounded-xl border border-stone-200 bg-white p-4">
-            <span className="font-mono text-stone-400">{i + 1}</span>
-            <div>
-              <p className="font-semibold text-stone-900">{step.name}</p>
-              <p className="text-stone-600">{step.detail}</p>
-            </div>
-          </li>
-        ))}
-      </ol>
-      <p className="text-sm text-stone-500">
-        EmberScan flags likely wildfire hazards and suggests fixes. It is not an inspection and
-        does not certify that any property is safe or compliant.
-      </p>
+    <main>
+      <Suspense fallback={<Skeleton lines={3} />}>
+        <Buildings />
+      </Suspense>
     </main>
+  );
+}
+
+async function Buildings() {
+  const { db, current } = await currentContext();
+  if (!current) {
+    return (
+      <Card>
+        <h1 className="text-xl font-bold">Start with a community</h1>
+        <p className="mt-1 text-muted">Add your HOA, condo or home, then its buildings. Each building gets its own scan.</p>
+        <ButtonLink href="/manage/new" className="mt-4">
+          + New community
+        </ButtonLink>
+      </Card>
+    );
+  }
+  const list = await listBuildings(db, current.id);
+  const allScans = await listScans(
+    db,
+    list.map((b) => b.id),
+  );
+
+  return (
+    <>
+      <PageHeader
+        title={current.name}
+        kicker={
+          <span className="flex flex-wrap items-center gap-2">
+            {current.isSample && <SampleBadge />}
+            <span>
+              {current.type} · {current.place || "No place set"} · {list.length} building{list.length === 1 ? "" : "s"}
+            </span>
+          </span>
+        }
+      >
+        <ButtonLink href={`/manage/${current.id}`} variant="secondary">
+          Add or edit buildings
+        </ButtonLink>
+      </PageHeader>
+
+      {list.length === 0 && (
+        <Card>
+          <p className="text-muted">No buildings yet.</p>
+          <ButtonLink href={`/manage/${current.id}`} className="mt-3">
+            Add a building
+          </ButtonLink>
+        </Card>
+      )}
+
+      <ul className="grid gap-3 sm:grid-cols-2">
+        {list.map((b) => {
+          const scan = latestDone(allScans, b.id);
+          const running = allScans.find((s) => s.buildingId === b.id && (s.status === "queued" || s.status === "processing"));
+          const report = scan?.report;
+          const summary = report ? pipelineSummary(report) : null;
+          const cite = report ? firstCitation(report) : null;
+          return (
+            <li key={b.id}>
+              <Card className="flex h-full flex-col gap-3">
+                <div className="flex items-start gap-3">
+                  {report ? (
+                    <ScoreBadge score={report.score.score} />
+                  ) : (
+                    <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-soft text-xs font-semibold text-muted">
+                      —
+                    </span>
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <h2 className="font-bold text-ink">{b.label}</h2>
+                    {b.units && <p className="text-sm text-muted">Units {b.units}</p>}
+                    {report ? (
+                      <p className="mt-1 flex flex-wrap items-center gap-1.5 text-sm font-semibold">
+                        {scoreLabel(report.score.score)}
+                        {scan?.isSample && <SampleBadge />}
+                      </p>
+                    ) : (
+                      <p className="mt-1 text-sm text-muted">
+                        Not scanned yet ·{" "}
+                        <Link href={`/scan?building=${b.id}`} className="font-semibold text-brand underline underline-offset-2">
+                          Scan now
+                        </Link>
+                      </p>
+                    )}
+                  </div>
+                </div>
+                {report && summary && (
+                  <div className="flex flex-col gap-1.5 text-sm">
+                    <div className="flex flex-wrap gap-1.5">
+                      {report.score.fails > 0 && <Pill tone="fail">{report.score.fails} fails</Pill>}
+                      {report.score.reviews > 0 && <Pill tone="review">{report.score.reviews} need review</Pill>}
+                      {report.score.passes > 0 && <Pill tone="pass">{report.score.passes} pass</Pill>}
+                    </div>
+                    <p className="text-muted">{summary.tracked}</p>
+                    {summary.closest && <p className="text-muted">Closest: {summary.closest}</p>}
+                    {cite && <p className="text-xs text-muted">Top issue: {cite}</p>}
+                  </div>
+                )}
+                {running && (
+                  <Link href={`/scan/${running.id}`} className="text-sm font-semibold text-brand underline underline-offset-2">
+                    Scan in progress · {Math.round((running.progress ?? 0) * 100)}% ({running.stage ?? "queued"})
+                  </Link>
+                )}
+                <div className="mt-auto flex flex-wrap gap-2">
+                  {scan && (
+                    <ButtonLink href={`/report/${scan.id}`} variant="primary">
+                      Open report
+                    </ButtonLink>
+                  )}
+                  <ButtonLink href={`/scan?building=${b.id}`} variant="secondary">
+                    {scan ? "Rescan" : "Scan now"}
+                  </ButtonLink>
+                </div>
+              </Card>
+            </li>
+          );
+        })}
+      </ul>
+      <div className="mt-6">
+        <ShortDisclaimer />
+      </div>
+    </>
   );
 }

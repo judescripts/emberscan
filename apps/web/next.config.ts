@@ -9,6 +9,10 @@ const devOrigins = (process.env.DEV_ALLOWED_ORIGINS ?? "")
 
 const nextConfig: NextConfig = {
   ...(devOrigins.length ? { allowedDevOrigins: devOrigins } : {}),
+  // Lets a production build run beside `next dev` (e.g. NEXT_DIST_DIR=.next-build npm run build).
+  ...(process.env.NEXT_DIST_DIR ? { distDir: process.env.NEXT_DIST_DIR } : {}),
+  // PGlite loads its WASM and data files from its package directory at runtime.
+  serverExternalPackages: ["@electric-sql/pglite"],
   cacheComponents: true,
   partialPrefetching: true,
   turbopack: {

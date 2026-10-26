@@ -1,0 +1,431 @@
+{
+  "pack_id": "us-ca",
+  "jurisdiction": { "country": "US", "state": "CA" },
+  "version": "2026-10-26",
+  "checked_on": "2026-10-26",
+  "applies_where": "State Responsibility Area (SRA), every Fire Hazard Severity Zone class, under PRC 4291 and 14 CCR 1299.01-1299.05 (enforced by CAL FIRE); and Very High Fire Hazard Severity Zones in the Local Responsibility Area (LRA) as designated by the local agency under Gov. Code 51179, under Gov. Code 51182 (enforced by the local fire agency). Not required by state law in LRA Moderate/High zones or unzoned LRA, though local ordinances may apply. In the LRA, a local agency may adopt stricter rules or approved alternative practices with substantially similar practical effects (Gov. Code 51182(f)); compliance with an approved local alternative counts as compliance. Every zone stops at the property line.",
+  "disclaimer": "EmberScan flags likely hazards from video. It never certifies compliance. Only the agency responsible for fire protection (CAL FIRE in the SRA, the local fire agency in the LRA) can determine compliance through an inspection. Not legal advice.",
+  "status_notes": {
+    "zone0": "No Zone 0 regulation is in force on 2026-10-26. Board adopted emergency regs 2026-08-19; OAL file 2026-0828-03E submitted 2026-08-28 and withdrawn by the Board 2026-09-08 (OAL Recent Actions). OAL's emergency and regular under-review lists (latest entries dated 2026-10-22) show no Zone 0 package. NEW: the Board's Nov 5, 2026 agenda (posted 2026-10-23), item 13, asks the Board to adopt an updated Finding of Emergency and final rule text and resubmit the package to OAL. Updated rule text was not yet posted on 2026-10-26. All Z0-* rules below follow the Aug 19, 2026 text and are status 'proposed' with effective_date null.",
+    "zone1_range": "Under the regulation in force today (14 CCR 1299.03), Zone 1 is 0-30 ft. When Zone 0 takes effect, Zone 1 becomes 5-30 ft. Adopted Z1-* rules therefore use 0-30 ft.",
+    "effective_date_meaning": "For adopted rules, effective_date is the date the currently operative text took effect (statute: AB 1455 amendment, effective 2025-10-13; 14 CCR 1299.03: operative 2013-07-01, litter subsection 2013-10-01). It is not the date the duty was first enacted.",
+    "existing_phase_in_legend": {
+      "immediate": "Existing structures comply on the regulation's effective date",
+      "3y": "Existing structures comply within 3 years of the effective date",
+      "3-5y": "LRA draft: within 3 years, or up to 5 on a local-agency timeline. SRA draft: within 5 years, or on a Director timeline of at least 3 years. See VERIFY list."
+    },
+    "check_conventions": "absent_within: hazard class should not appear within 'ft' of the structure (min_ft..ft when min_ft is given). ft='eave' means the width of the eave overhang, clamped to min_ft..max_ft. min_clearance: subject must be at least 'ft' from 'reference'. max_height: hazard class taller than 'inches' is flagged. present: flag if the hazard class is seen at 'location'. manual_review: show to the user with the stated threshold, no automatic pass/fail."
+  },
+  "zones": [
+    { "id": "Z0", "name": "Zone 0 - Ember-resistant zone (proposed, not in force)", "min_ft": 0, "max_ft": 5, "status": "proposed", "note": "Measured from the exterior wall, roof, attached deck, stairs or pergola (including self-supporting ones within 1 ft), or to the property line if closer. Includes the area under attached decks and stairs." },
+    { "id": "Z1", "name": "Zone 1 - Lean, clean and green", "min_ft": 0, "max_ft": 30, "status": "adopted", "note": "0-30 ft under current 14 CCR 1299.03. Becomes 5-30 ft once Zone 0 takes effect." },
+    { "id": "Z2", "name": "Zone 2 - Reduced fuel zone", "min_ft": 30, "max_ft": 100, "status": "adopted", "note": "Not beyond the property line." },
+    { "id": "Z12", "name": "Zones 1 and 2 (shared requirements)", "min_ft": 0, "max_ft": 100, "status": "adopted", "note": "14 CCR 1299.03(c) rules that apply anywhere in Zones 1 and 2." },
+    { "id": "ALL", "name": "Whole defensible space (statute)", "min_ft": 0, "max_ft": 100, "status": "adopted", "note": "Statutory duties in PRC 4291(a) and Gov. Code 51182(a) that are not tied to one zone." }
+  ],
+  "rules": [
+    {
+      "id": "ALL-01", "zone": "ALL",
+      "title": "No tree parts within 10 ft of a chimney or stovepipe outlet",
+      "hazard_classes": ["tree", "tree_branch"],
+      "check": { "type": "min_clearance", "ft": 10, "reference": "chimney", "subject": "tree_branch" },
+      "plain_language": "Cut back any part of a tree that comes within 10 feet of your chimney or stovepipe opening.",
+      "status": "adopted", "effective_date": "2025-10-13", "applies_to": "all",
+      "citation_url": "https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=PRC&sectionNum=4291",
+      "citation_label": "PRC 4291(a)(2); GC 51182(a)(2); 14 CCR 1299.03(a)(2)"
+    },
+    {
+      "id": "ALL-02", "zone": "ALL",
+      "title": "Roof free of leaves, needles and other plant debris",
+      "hazard_classes": ["roof_debris"],
+      "check": { "type": "present", "location": "roof" },
+      "plain_language": "Keep leaves, needles and other plant debris off your roof.",
+      "status": "adopted", "effective_date": "2025-10-13", "applies_to": "all",
+      "citation_url": "https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=PRC&sectionNum=4291",
+      "citation_label": "PRC 4291(a)(4); GC 51182(a)(4)"
+    },
+    {
+      "id": "ALL-03", "zone": "ALL",
+      "title": "No dead or dying wood on plants next to or over the building",
+      "hazard_classes": ["dead_vegetation", "tree_branch", "shrub"],
+      "check": { "type": "manual_review", "location": "adjacent_to_or_overhanging_structure", "condition": "dead_or_dying_wood" },
+      "plain_language": "Trees and shrubs that touch or hang over your house should have no dead or dying wood.",
+      "status": "adopted", "effective_date": "2025-10-13", "applies_to": "all",
+      "citation_url": "https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=PRC&sectionNum=4291",
+      "citation_label": "PRC 4291(a)(3); GC 51182(a)(3)"
+    },
+    {
+      "id": "ALL-04", "zone": "ALL",
+      "title": "100 ft of defensible space, fuels spaced so a wildfire is unlikely to ignite the structure",
+      "hazard_classes": ["vegetation_any"],
+      "check": { "type": "manual_review", "ft": 100, "note": "Performance standard with no single numeric test. Single well-pruned specimen trees that do not carry fire to the structure are exempt." },
+      "plain_language": "Keep plants thinned and spaced out to 100 feet (or your property line) so fire can't easily reach your home.",
+      "status": "adopted", "effective_date": "2025-10-13", "applies_to": "all",
+      "citation_url": "https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=PRC&sectionNum=4291",
+      "citation_label": "PRC 4291(a)(1)(A); GC 51182(a)(1)(A)"
+    },
+    {
+      "id": "Z1-01", "zone": "Z1",
+      "title": "Remove dead or dying vegetation and plant debris within 30 ft",
+      "hazard_classes": ["dead_vegetation", "leaf_litter"],
+      "check": { "type": "absent_within", "ft": 30 },
+      "plain_language": "Clear dead plants, dry grass, weeds, fallen leaves and pine needles within 30 feet of your house.",
+      "status": "adopted", "effective_date": "2013-07-01", "applies_to": "all",
+      "citation_url": "https://www.law.cornell.edu/regulations/california/14-CCR-1299.03",
+      "citation_label": "14 CCR 1299.03(a)(1)"
+    },
+    {
+      "id": "Z1-02", "zone": "Z1",
+      "title": "Rain gutters free of dead vegetation",
+      "hazard_classes": ["gutter_debris"],
+      "check": { "type": "present", "location": "gutter" },
+      "plain_language": "Clean dead leaves and needles out of your gutters.",
+      "status": "adopted", "effective_date": "2013-07-01", "applies_to": "all",
+      "citation_url": "https://www.law.cornell.edu/regulations/california/14-CCR-1299.03",
+      "citation_label": "14 CCR 1299.03(a)(1)"
+    },
+    {
+      "id": "Z1-03", "zone": "Z1",
+      "title": "Remove dead branches over the roof, near windows or against walls",
+      "hazard_classes": ["tree_branch", "dead_vegetation"],
+      "check": { "type": "manual_review", "location": "over_roof_or_near_windows_or_walls", "condition": "dead" },
+      "plain_language": "Cut off dead branches that hang over the roof, sit by windows or touch the walls.",
+      "status": "adopted", "effective_date": "2013-07-01", "applies_to": "all",
+      "citation_url": "https://www.law.cornell.edu/regulations/california/14-CCR-1299.03",
+      "citation_label": "14 CCR 1299.03(a)(2)"
+    },
+    {
+      "id": "Z1-04", "zone": "Z1",
+      "title": "No exposed firewood piles in Zone 1",
+      "hazard_classes": ["woodpile"],
+      "check": { "type": "absent_within", "ft": 30, "unless": "fully_covered_in_fire_resistant_material" },
+      "plain_language": "Move firewood piles at least 30 feet from the house unless they are fully covered with fire-resistant material.",
+      "status": "adopted", "effective_date": "2013-07-01", "applies_to": "all",
+      "citation_url": "https://www.law.cornell.edu/regulations/california/14-CCR-1299.03",
+      "citation_label": "14 CCR 1299.03(a)(3)"
+    },
+    {
+      "id": "Z1-05", "zone": "Z1",
+      "title": "No flammable plants or items under or beside decks, balconies and stairs",
+      "hazard_classes": ["vegetation_any", "dead_vegetation", "woodpile", "combustible_furniture"],
+      "check": { "type": "present", "location": "under_or_adjacent_deck_balcony_stairs" },
+      "plain_language": "Keep plants and anything that can burn out from under and beside your deck, balcony and stairs.",
+      "status": "adopted", "effective_date": "2013-07-01", "applies_to": "all",
+      "citation_url": "https://www.law.cornell.edu/regulations/california/14-CCR-1299.03",
+      "citation_label": "14 CCR 1299.03(a)(4)"
+    },
+    {
+      "id": "Z2-01", "zone": "Z2",
+      "title": "Remove dead and dying woody surface and aerial fuels (30-100 ft)",
+      "hazard_classes": ["dead_vegetation"],
+      "check": { "type": "absent_within", "ft": 100, "min_ft": 30 },
+      "plain_language": "Between 30 and 100 feet, remove dead or dying brush, branches and downed wood.",
+      "status": "adopted", "effective_date": "2013-07-01", "applies_to": "all",
+      "citation_url": "https://www.law.cornell.edu/regulations/california/14-CCR-1299.03",
+      "citation_label": "14 CCR 1299.03(b)(2)(A)"
+    },
+    {
+      "id": "Z2-02", "zone": "Z2",
+      "title": "Loose surface litter no deeper than 3 inches",
+      "hazard_classes": ["leaf_litter"],
+      "check": { "type": "manual_review", "max_depth_inches": 3, "note": "Litter depth cannot be measured reliably from video." },
+      "plain_language": "Fallen leaves, needles and twigs between 30 and 100 feet can stay only up to 3 inches deep.",
+      "status": "adopted", "effective_date": "2013-10-01", "applies_to": "all",
+      "citation_url": "https://www.law.cornell.edu/regulations/california/14-CCR-1299.03",
+      "citation_label": "14 CCR 1299.03(b)(2)(A)"
+    },
+    {
+      "id": "Z2-03", "zone": "Z2",
+      "title": "Annual grasses and forbs cut to 4 inches or less",
+      "hazard_classes": ["grass_tall"],
+      "check": { "type": "max_height", "inches": 4 },
+      "plain_language": "Mow annual grass and weeds between 30 and 100 feet down to 4 inches or shorter.",
+      "status": "adopted", "effective_date": "2013-07-01", "applies_to": "all",
+      "citation_url": "https://www.law.cornell.edu/regulations/california/14-CCR-1299.03",
+      "citation_label": "14 CCR 1299.03(b)(2)(B)"
+    },
+    {
+      "id": "Z2-04", "zone": "Z2",
+      "title": "Exposed wood piles have 10 ft clearance to bare mineral soil",
+      "hazard_classes": ["woodpile", "vegetation_any"],
+      "check": { "type": "min_clearance", "ft": 10, "reference": "woodpile", "subject": "vegetation_any", "bare_soil": true },
+      "plain_language": "Clear a 10-foot ring of bare soil all the way around any uncovered wood pile.",
+      "status": "adopted", "effective_date": "2013-07-01", "applies_to": "all",
+      "citation_url": "https://www.law.cornell.edu/regulations/california/14-CCR-1299.03",
+      "citation_label": "14 CCR 1299.03(b)(2)(C)"
+    },
+    {
+      "id": "Z2-05", "zone": "Z2",
+      "title": "Horizontal and vertical spacing between shrubs and trees",
+      "hazard_classes": ["shrub", "tree", "ladder_fuel"],
+      "check": { "type": "manual_review", "method": "fuel_separation_or_continuous_tree_canopy", "note": "The regulation requires spacing but sets no fixed distance. Distances come from the 2006 General Guidelines (see Z2-06, Z2-07)." },
+      "plain_language": "Between 30 and 100 feet, space out shrubs and trees and keep gaps between low plants and tree branches.",
+      "status": "adopted", "effective_date": "2013-07-01", "applies_to": "all",
+      "citation_url": "https://www.law.cornell.edu/regulations/california/14-CCR-1299.03",
+      "citation_label": "14 CCR 1299.03(b)(1)"
+    },
+    {
+      "id": "Z12-01", "zone": "Z12",
+      "title": "Propane (LPG) tank clearance: 10 ft bare soil plus 10 ft free of flammable vegetation",
+      "hazard_classes": ["propane_tank", "vegetation_any"],
+      "check": { "type": "min_clearance", "ft": 20, "reference": "propane_tank", "subject": "vegetation_any", "bare_soil_ft": 10 },
+      "plain_language": "Around a propane tank, keep 10 feet of bare soil and no flammable plants for another 10 feet beyond that.",
+      "status": "adopted", "effective_date": "2013-07-01", "applies_to": "all",
+      "citation_url": "https://www.law.cornell.edu/regulations/california/14-CCR-1299.03",
+      "citation_label": "14 CCR 1299.03(c)(1)"
+    },
+    {
+      "id": "Z12-02", "zone": "Z12",
+      "title": "Outbuilding clearance: 10 ft bare soil plus 10 ft free of flammable vegetation",
+      "hazard_classes": ["outbuilding", "vegetation_any"],
+      "check": { "type": "min_clearance", "ft": 20, "reference": "outbuilding", "subject": "vegetation_any", "bare_soil_ft": 10 },
+      "plain_language": "Around a shed or other outbuilding, keep 10 feet of bare soil and no flammable plants for another 10 feet beyond that.",
+      "status": "adopted", "effective_date": "2013-07-01", "applies_to": "all",
+      "citation_url": "https://www.law.cornell.edu/regulations/california/14-CCR-1299.03",
+      "citation_label": "14 CCR 1299.03(c)(1)"
+    },
+    {
+      "id": "Z0-01", "zone": "Z0",
+      "title": "No combustible materials in Zone 0 (litter, wood or bark mulch, debris)",
+      "hazard_classes": ["wood_mulch", "leaf_litter", "dead_vegetation"],
+      "check": { "type": "absent_within", "ft": 5, "exception": "Inspector may allow temporary mulch for erosion control during construction or emergencies." },
+      "plain_language": "Within 5 feet of the house, replace bark or wood-chip mulch and clear fallen leaves and needles.",
+      "status": "proposed", "effective_date": null, "applies_to": "all", "existing_phase_in": "3y",
+      "citation_url": "https://34c031f8-c9fd-4018-8c5a-4159cdff6b0d-cdn-endpoint.azureedge.net/-/media/bof-website/board-meeting-information/monthly-board-binder-materials/archive/2026-monthly-board-binder-materials-workshop-archives/august-2026/full/full-8a-zone-0-regulation-summary--rule-plead-august-2026.pdf",
+      "citation_label": "Draft 14 CCR 1299.03(d)(1) / 1298.04(b)(1)"
+    },
+    {
+      "id": "Z0-02", "zone": "Z0",
+      "title": "Nothing combustible under decks, balconies, pergolas or stairs",
+      "hazard_classes": ["vegetation_any", "dead_vegetation", "woodpile", "combustible_furniture"],
+      "check": { "type": "present", "location": "under_deck_balcony_pergola_stairs" },
+      "plain_language": "Keep the space under your deck, balcony, pergola and stairs empty of plants and anything that burns.",
+      "status": "proposed", "effective_date": null, "applies_to": "all", "existing_phase_in": "3y",
+      "citation_url": "https://34c031f8-c9fd-4018-8c5a-4159cdff6b0d-cdn-endpoint.azureedge.net/-/media/bof-website/board-meeting-information/monthly-board-binder-materials/archive/2026-monthly-board-binder-materials-workshop-archives/august-2026/full/full-8a-zone-0-regulation-summary--rule-plead-august-2026.pdf",
+      "citation_label": "Draft 14 CCR 1299.03(d)(3) / 1298.04(b)(3)"
+    },
+    {
+      "id": "Z0-03", "zone": "Z0",
+      "title": "No firewood stored in Zone 0",
+      "hazard_classes": ["woodpile"],
+      "check": { "type": "absent_within", "ft": 5 },
+      "plain_language": "Don't store any firewood within 5 feet of the house, even if it's covered.",
+      "status": "proposed", "effective_date": null, "applies_to": "all", "existing_phase_in": "3y",
+      "citation_url": "https://34c031f8-c9fd-4018-8c5a-4159cdff6b0d-cdn-endpoint.azureedge.net/-/media/bof-website/board-meeting-information/monthly-board-binder-materials/archive/2026-monthly-board-binder-materials-workshop-archives/august-2026/full/full-8a-zone-0-regulation-summary--rule-plead-august-2026.pdf",
+      "citation_label": "Draft 14 CCR 1299.03(d)(4) / 1298.04(b)(4)"
+    },
+    {
+      "id": "Z0-04", "zone": "Z0",
+      "title": "No live tree branches under the eaves",
+      "hazard_classes": ["tree_branch"],
+      "check": { "type": "absent_within", "ft": "eave", "min_ft": 0, "max_ft": 5, "location": "under_eave" },
+      "plain_language": "Trim tree branches so none grow underneath your roof overhang.",
+      "status": "proposed", "effective_date": null, "applies_to": "all", "existing_phase_in": "immediate",
+      "citation_url": "https://34c031f8-c9fd-4018-8c5a-4159cdff6b0d-cdn-endpoint.azureedge.net/-/media/bof-website/board-meeting-information/monthly-board-binder-materials/archive/2026-monthly-board-binder-materials-workshop-archives/august-2026/full/full-8a-zone-0-regulation-summary--rule-plead-august-2026.pdf",
+      "citation_label": "Draft 14 CCR 1299.03(d)(5)(C) / 1298.04(b)(5)(C)"
+    },
+    {
+      "id": "Z0-05", "zone": "Z0",
+      "title": "Ladder fuels removed from the lower 6 ft or lower third of the tree, whichever is smaller",
+      "hazard_classes": ["ladder_fuel", "tree_branch"],
+      "check": { "type": "min_clearance", "ft": 6, "reference": "ground", "subject": "tree_branch", "alt_fraction_of_tree_height": 0.333, "use": "smaller" },
+      "plain_language": "Remove low branches on trees near the house up to 6 feet, or a third of the tree's height for small trees.",
+      "status": "proposed", "effective_date": null, "applies_to": "all", "existing_phase_in": "3y",
+      "citation_url": "https://34c031f8-c9fd-4018-8c5a-4159cdff6b0d-cdn-endpoint.azureedge.net/-/media/bof-website/board-meeting-information/monthly-board-binder-materials/archive/2026-monthly-board-binder-materials-workshop-archives/august-2026/full/full-8a-zone-0-regulation-summary--rule-plead-august-2026.pdf",
+      "citation_label": "Draft 14 CCR 1299.03(d)(5)(D) / 1298.04(b)(5)(D)"
+    },
+    {
+      "id": "Z0-06", "zone": "Z0",
+      "title": "Live tree branches at least 5 ft above the roof",
+      "hazard_classes": ["tree_branch"],
+      "check": { "type": "min_clearance", "ft": 5, "reference": "roof", "subject": "tree_branch" },
+      "plain_language": "Keep tree branches at least 5 feet above your roof.",
+      "status": "proposed", "effective_date": null, "applies_to": "all", "existing_phase_in": "3y",
+      "citation_url": "https://34c031f8-c9fd-4018-8c5a-4159cdff6b0d-cdn-endpoint.azureedge.net/-/media/bof-website/board-meeting-information/monthly-board-binder-materials/archive/2026-monthly-board-binder-materials-workshop-archives/august-2026/full/full-8a-zone-0-regulation-summary--rule-plead-august-2026.pdf",
+      "citation_label": "Draft 14 CCR 1299.03(d)(5)(E) / 1298.04(b)(5)(E)"
+    },
+    {
+      "id": "Z0-07", "zone": "Z0",
+      "title": "Live tree branches at least 1 ft from walls",
+      "hazard_classes": ["tree_branch"],
+      "check": { "type": "min_clearance", "ft": 1, "reference": "wall", "subject": "tree_branch" },
+      "plain_language": "Keep tree branches at least 1 foot away from your walls.",
+      "status": "proposed", "effective_date": null, "applies_to": "all", "existing_phase_in": "3y",
+      "citation_url": "https://34c031f8-c9fd-4018-8c5a-4159cdff6b0d-cdn-endpoint.azureedge.net/-/media/bof-website/board-meeting-information/monthly-board-binder-materials/archive/2026-monthly-board-binder-materials-workshop-archives/august-2026/full/full-8a-zone-0-regulation-summary--rule-plead-august-2026.pdf",
+      "citation_label": "Draft 14 CCR 1299.03(d)(5)(E) / 1298.04(b)(5)(E)"
+    },
+    {
+      "id": "Z0-08", "zone": "Z0",
+      "title": "Vegetation-free safety zone: under the eave, at least 1 ft from the wall",
+      "hazard_classes": ["vegetation_any"],
+      "check": { "type": "absent_within", "ft": "eave", "min_ft": 1, "max_ft": 5, "exclude": ["tree"] },
+      "plain_language": "Keep the ground under your roof overhang (at least 1 foot out from the wall) free of plants.",
+      "status": "proposed", "effective_date": null, "applies_to": "all", "existing_phase_in": "3-5y",
+      "citation_url": "https://34c031f8-c9fd-4018-8c5a-4159cdff6b0d-cdn-endpoint.azureedge.net/-/media/bof-website/board-meeting-information/monthly-board-binder-materials/archive/2026-monthly-board-binder-materials-workshop-archives/august-2026/full/full-8a-zone-0-regulation-summary--rule-plead-august-2026.pdf",
+      "citation_label": "Draft 14 CCR 1299.03(d)(6)(A) / 1298.04(b)(6)(A)"
+    },
+    {
+      "id": "Z0-09", "zone": "Z0",
+      "title": "No vegetation within 2 ft of windows, doors or vents",
+      "hazard_classes": ["vegetation_any"],
+      "check": { "type": "min_clearance", "ft": 2, "reference": "window_door_vent", "subject": "vegetation_any" },
+      "plain_language": "Keep plants at least 2 feet away from windows, doors and vents.",
+      "status": "proposed", "effective_date": null, "applies_to": "all", "existing_phase_in": "3-5y",
+      "citation_url": "https://34c031f8-c9fd-4018-8c5a-4159cdff6b0d-cdn-endpoint.azureedge.net/-/media/bof-website/board-meeting-information/monthly-board-binder-materials/archive/2026-monthly-board-binder-materials-workshop-archives/august-2026/full/full-8a-zone-0-regulation-summary--rule-plead-august-2026.pdf",
+      "citation_label": "Draft 14 CCR 1299.03(d)(6) / 1298.04(b)(6)"
+    },
+    {
+      "id": "Z0-10", "zone": "Z0",
+      "title": "No vegetation within 5 ft of an attached deck, stairs or pergola",
+      "hazard_classes": ["vegetation_any"],
+      "check": { "type": "min_clearance", "ft": 5, "reference": "attached_deck_stairs_pergola", "subject": "vegetation_any" },
+      "plain_language": "Keep a plant-free strip 5 feet wide around any deck, stairs or pergola attached to the house.",
+      "status": "proposed", "effective_date": null, "applies_to": "all", "existing_phase_in": "3-5y",
+      "citation_url": "https://34c031f8-c9fd-4018-8c5a-4159cdff6b0d-cdn-endpoint.azureedge.net/-/media/bof-website/board-meeting-information/monthly-board-binder-materials/archive/2026-monthly-board-binder-materials-workshop-archives/august-2026/full/full-8a-zone-0-regulation-summary--rule-plead-august-2026.pdf",
+      "citation_label": "Draft 14 CCR 1299.03(d)(6)(B) / 1298.04(b)(6)(B)"
+    },
+    {
+      "id": "Z0-11", "zone": "Z0",
+      "title": "Lawn and ground cover in Zone 0 under 3 inches tall",
+      "hazard_classes": ["grass_tall", "herbaceous_planting"],
+      "check": { "type": "max_height", "inches": 3, "applies_outside": "safety_zone", "condition": "well_maintained_non_woody_no_dead_material" },
+      "plain_language": "Outside the plant-free strip, keep lawn and ground cover within 5 feet of the house under 3 inches tall.",
+      "status": "proposed", "effective_date": null, "applies_to": "all", "existing_phase_in": "3-5y",
+      "citation_url": "https://34c031f8-c9fd-4018-8c5a-4159cdff6b0d-cdn-endpoint.azureedge.net/-/media/bof-website/board-meeting-information/monthly-board-binder-materials/archive/2026-monthly-board-binder-materials-workshop-archives/august-2026/full/full-8a-zone-0-regulation-summary--rule-plead-august-2026.pdf",
+      "citation_label": "Draft 14 CCR 1299.03(d)(7)(A) / 1298.04(b)(7)(A)"
+    },
+    {
+      "id": "Z0-12", "zone": "Z0",
+      "title": "Non-woody plants 3-18 inches: small groupings, spaced apart",
+      "hazard_classes": ["herbaceous_planting"],
+      "check": { "type": "max_height", "inches": 18, "applies_outside": "safety_zone", "max_group_area_sqft": 1, "spacing_factor_of_tallest_height": 1.5 },
+      "plain_language": "Soft-stemmed plants within 5 feet must be 18 inches or shorter, in clumps of 1 square foot or less, spaced 1.5 times their height apart.",
+      "status": "proposed", "effective_date": null, "applies_to": "all", "existing_phase_in": "3-5y",
+      "citation_url": "https://34c031f8-c9fd-4018-8c5a-4159cdff6b0d-cdn-endpoint.azureedge.net/-/media/bof-website/board-meeting-information/monthly-board-binder-materials/archive/2026-monthly-board-binder-materials-workshop-archives/august-2026/full/full-8a-zone-0-regulation-summary--rule-plead-august-2026.pdf",
+      "citation_label": "Draft 14 CCR 1299.03(d)(7)(B) / 1298.04(b)(7)(B)"
+    },
+    {
+      "id": "Z0-13", "zone": "Z0",
+      "title": "Potted plants: noncombustible, unattached pots of 5 gallons or less, plants up to 18 inches",
+      "hazard_classes": ["potted_plant"],
+      "check": { "type": "max_height", "inches": 18, "applies_outside": "safety_zone", "max_container_gallons": 5, "container": "noncombustible_unaffixed", "spacing_factor_of_height": 1.5 },
+      "plain_language": "Potted plants within 5 feet need non-burnable pots of 5 gallons or less, plants no taller than 18 inches, spaced apart.",
+      "status": "proposed", "effective_date": null, "applies_to": "all", "existing_phase_in": "3-5y",
+      "citation_url": "https://34c031f8-c9fd-4018-8c5a-4159cdff6b0d-cdn-endpoint.azureedge.net/-/media/bof-website/board-meeting-information/monthly-board-binder-materials/archive/2026-monthly-board-binder-materials-workshop-archives/august-2026/full/full-8a-zone-0-regulation-summary--rule-plead-august-2026.pdf",
+      "citation_label": "Draft 14 CCR 1299.03(d)(7)(C) / 1298.04(b)(7)(C)"
+    },
+    {
+      "id": "Z0-14", "zone": "Z0",
+      "title": "No woody shrubs in Zone 0 (only existing, maintained trees and listed non-woody plants allowed)",
+      "hazard_classes": ["shrub"],
+      "check": { "type": "absent_within", "ft": 5, "note": "Derived: the draft permits vegetation in Zone 0 only under the non-woody plant conditions in (d)(7); existing trees may stay if maintained." },
+      "plain_language": "Woody shrubs and hedges within 5 feet of the house would need to be removed or moved farther out.",
+      "status": "proposed", "effective_date": null, "applies_to": "all", "existing_phase_in": "3-5y",
+      "citation_url": "https://34c031f8-c9fd-4018-8c5a-4159cdff6b0d-cdn-endpoint.azureedge.net/-/media/bof-website/board-meeting-information/monthly-board-binder-materials/archive/2026-monthly-board-binder-materials-workshop-archives/august-2026/full/full-8a-zone-0-regulation-summary--rule-plead-august-2026.pdf",
+      "citation_label": "Draft 14 CCR 1299.03(d)(6)-(7) / 1298.04(b)(6)-(7)"
+    },
+    {
+      "id": "Z0-15", "zone": "Z0",
+      "title": "Attached fences and gates: first 5 ft noncombustible",
+      "hazard_classes": ["fence_attached", "combustible_fence"],
+      "check": { "type": "absent_within", "ft": 5, "reference": "fence_attachment_point", "note": "Applies to fences or gates attached to the structure or within 1 ft of it." },
+      "plain_language": "Where a wooden fence or gate meets the house, replace the first 5 feet with metal or another non-burnable material.",
+      "status": "proposed", "effective_date": null, "applies_to": "all", "existing_phase_in": "3-5y",
+      "citation_url": "https://34c031f8-c9fd-4018-8c5a-4159cdff6b0d-cdn-endpoint.azureedge.net/-/media/bof-website/board-meeting-information/monthly-board-binder-materials/archive/2026-monthly-board-binder-materials-workshop-archives/august-2026/full/full-8a-zone-0-regulation-summary--rule-plead-august-2026.pdf",
+      "citation_label": "Draft 14 CCR 1299.03(d)(8)-(9) / 1298.04(b)(8)-(9)"
+    },
+    {
+      "id": "Z0-16", "zone": "Z0",
+      "title": "No new combustible fences or gates within 5 ft (repairs with same material allowed)",
+      "hazard_classes": ["combustible_fence"],
+      "check": { "type": "manual_review", "ft": 5, "note": "Video cannot tell a new fence from an existing one." },
+      "plain_language": "Any new fence or gate within 5 feet of the house would have to be non-burnable; repairs to an existing fence are fine.",
+      "status": "proposed", "effective_date": null, "applies_to": "all", "existing_phase_in": "3-5y",
+      "citation_url": "https://34c031f8-c9fd-4018-8c5a-4159cdff6b0d-cdn-endpoint.azureedge.net/-/media/bof-website/board-meeting-information/monthly-board-binder-materials/archive/2026-monthly-board-binder-materials-workshop-archives/august-2026/full/full-8a-zone-0-regulation-summary--rule-plead-august-2026.pdf",
+      "citation_label": "Draft 14 CCR 1299.03(d)(9) / 1298.04(b)(9)(B)-(C)"
+    },
+    {
+      "id": "Z0-17", "zone": "Z0",
+      "title": "Outbuildings in Zone 0 only if built entirely of noncombustible materials",
+      "hazard_classes": ["outbuilding"],
+      "check": { "type": "absent_within", "ft": 5, "unless": "entirely_noncombustible_construction" },
+      "plain_language": "A shed within 5 feet of the house would have to be built entirely of non-burnable materials.",
+      "status": "proposed", "effective_date": null, "applies_to": "all", "existing_phase_in": "3-5y",
+      "citation_url": "https://34c031f8-c9fd-4018-8c5a-4159cdff6b0d-cdn-endpoint.azureedge.net/-/media/bof-website/board-meeting-information/monthly-board-binder-materials/archive/2026-monthly-board-binder-materials-workshop-archives/august-2026/full/full-8a-zone-0-regulation-summary--rule-plead-august-2026.pdf",
+      "citation_label": "Draft 14 CCR 1299.03(d)(10) / 1298.04(b)(10)"
+    },
+    {
+      "id": "Z0-18", "zone": "Z0",
+      "title": "No new trees planted in Zone 0",
+      "hazard_classes": ["tree"],
+      "check": { "type": "manual_review", "note": "Board guidance ties this to the 2025 CA Wildland-Urban Interface Code (new tree canopy not within 10 ft of a structure). Video cannot tell new trees from existing ones." },
+      "plain_language": "Don't plant new trees within 5 feet of the house; existing, well-kept trees can stay.",
+      "status": "guidance", "effective_date": null, "applies_to": "all",
+      "citation_url": "https://34c031f8-c9fd-4018-8c5a-4159cdff6b0d-cdn-endpoint.azureedge.net/-/media/bof-website/projects-and-programs/defensible-space-zones-0-1-2/zonezeroguidancedocseptember-final-2026.pdf",
+      "citation_label": "BOF Zone 0-2 Guidance (Sept 2026), p. 24"
+    },
+    {
+      "id": "Z0-19", "zone": "Z0",
+      "title": "Minimize combustible furniture, mats and planters on decks and near the house",
+      "hazard_classes": ["combustible_furniture"],
+      "check": { "type": "manual_review", "note": "No numeric threshold in any official source." },
+      "plain_language": "Keep wooden or cushioned furniture, doormats and planters near the house to a minimum, and bring them in before a fire.",
+      "status": "guidance", "effective_date": null, "applies_to": "all",
+      "citation_url": "https://readyforwildfire.org/prepare-for-wildfire/defensible-space/",
+      "citation_label": "CAL FIRE ReadyForWildfire, Zone 0"
+    },
+    {
+      "id": "Z0-20", "zone": "Z0",
+      "title": "Move vehicles, boats and RVs out of Zone 0",
+      "hazard_classes": ["vehicle_or_boat"],
+      "check": { "type": "absent_within", "ft": 5 },
+      "plain_language": "Park cars, boats and RVs more than 5 feet from the house when you can.",
+      "status": "guidance", "effective_date": null, "applies_to": "all",
+      "citation_url": "https://readyforwildfire.org/prepare-for-wildfire/defensible-space/",
+      "citation_label": "CAL FIRE ReadyForWildfire, Zone 0"
+    },
+    {
+      "id": "ALL-05", "zone": "ALL",
+      "title": "Ember-resistant vents (1/8 inch metal mesh or better)",
+      "hazard_classes": ["open_vent"],
+      "check": { "type": "manual_review", "note": "Board guidance: replace 1/4 inch screens with at least 1/8 inch metal mesh or ember- and flame-resistant vents. Mesh size is not measurable from video. Home-hardening, not a defensible-space regulation." },
+      "plain_language": "Cover attic and crawl-space vents with fine (1/8 inch) metal mesh so embers can't get in.",
+      "status": "guidance", "effective_date": null, "applies_to": "all",
+      "citation_url": "https://34c031f8-c9fd-4018-8c5a-4159cdff6b0d-cdn-endpoint.azureedge.net/-/media/bof-website/projects-and-programs/defensible-space-zones-0-1-2/zonezeroguidancedocseptember-final-2026.pdf",
+      "citation_label": "BOF Zone 0-2 Guidance (Sept 2026), Table 1"
+    },
+    {
+      "id": "Z2-06", "zone": "Z2",
+      "title": "Plant spacing by slope (rule of thumb)",
+      "hazard_classes": ["tree", "shrub"],
+      "check": { "type": "manual_review", "tree_canopy_gap_ft": { "slope_0_20_pct": 10, "slope_20_40_pct": 20, "slope_over_40_pct": 30 }, "shrub_gap_x_height": { "slope_0_20_pct": 2, "slope_20_40_pct": 4, "slope_over_40_pct": 6 }, "note": "Slope is not reliably measured from a walkaround video." },
+      "plain_language": "Leave more room between trees and between shrubs the steeper your lot is: 10 to 30 feet between tree canopies, 2 to 6 times shrub height between shrubs.",
+      "status": "guidance", "effective_date": null, "applies_to": "all",
+      "citation_url": "https://34c031f8-c9fd-4018-8c5a-4159cdff6b0d-cdn-endpoint.azureedge.net/-/media/bof-website/projects-and-programs/defensible-space-zones-0-1-2/zonezeroguidancedocseptember-final-2026.pdf",
+      "citation_label": "BOF Guidance (Sept 2026), Table 2 (from 2006 Guidelines)"
+    },
+    {
+      "id": "Z2-07", "zone": "Z2",
+      "title": "Vertical gap: lowest tree branches 3x shrub height above shrubs; prune trees 6-15 ft",
+      "hazard_classes": ["ladder_fuel", "tree_branch", "shrub"],
+      "check": { "type": "manual_review", "vertical_gap_x_shrub_height": 3, "prune_height_ft_min": 6, "prune_height_ft_max": 15 },
+      "plain_language": "Remove ladder fuels: keep the lowest tree branches well above any shrubs below them (about 3 times the shrub's height).",
+      "status": "guidance", "effective_date": null, "applies_to": "all",
+      "citation_url": "https://34c031f8-c9fd-4018-8c5a-4159cdff6b0d-cdn-endpoint.azureedge.net/-/media/bof-website/projects-and-programs/defensible-space-zones-0-1-2/zonezeroguidancedocseptember-final-2026.pdf",
+      "citation_label": "BOF Guidance (Sept 2026), pp. 15-17"
+    }
+  ],
+  "sources": [
+    { "label": "PRC 4291 (leginfo, read via in-app browser 2026-10-26; text as amended by Stats. 2025 ch. 731, AB 1455, effective 2025-10-13)", "url": "https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=PRC&sectionNum=4291" },
+    { "label": "Gov. Code 51182 (leginfo, read via in-app browser 2026-10-26; amended by Stats. 2025 ch. 731, effective 2025-10-13)", "url": "https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=GOV&sectionNum=51182" },
+    { "label": "14 CCR 1299.01-1299.05 (Cornell LII mirror; official Westlaw CCR site not fetched)", "url": "https://www.law.cornell.edu/regulations/california/14-CCR-1299.03" },
+    { "label": "BOF Defensible Space Zones 0, 1, and 2 page (in-app browser 2026-10-26)", "url": "https://bof.fire.ca.gov/projects-and-programs/defensible-space-zones-0-1-and-2" },
+    { "label": "BOF Zone 0 Regulation Summary and Rule Plead, Aug 19 2026 draft", "url": "https://34c031f8-c9fd-4018-8c5a-4159cdff6b0d-cdn-endpoint.azureedge.net/-/media/bof-website/board-meeting-information/monthly-board-binder-materials/archive/2026-monthly-board-binder-materials-workshop-archives/august-2026/full/full-8a-zone-0-regulation-summary--rule-plead-august-2026.pdf" },
+    { "label": "BOF Guidance for Zones 0-2, September 2026 (adopted 2026-08-19, effective date blank)", "url": "https://34c031f8-c9fd-4018-8c5a-4159cdff6b0d-cdn-endpoint.azureedge.net/-/media/bof-website/projects-and-programs/defensible-space-zones-0-1-2/zonezeroguidancedocseptember-final-2026.pdf" },
+    { "label": "BOF November 4-5, 2026 meeting agenda (posted 2026-10-23), item 13", "url": "https://34c031f8-c9fd-4018-8c5a-4159cdff6b0d-cdn-endpoint.azureedge.net/-/media/bof-website/board-meeting-information/meeting-agendas-and-annual-schedules/2026/november-2026-final-agenda.pdf" },
+    { "label": "OAL Recent Actions Taken on Emergency Regulations", "url": "https://oal.ca.gov/emergency_regulations/Recent_Actions_Taken_on_Emergency_Regulations/" },
+    { "label": "OAL Emergency Regulations Under Review", "url": "https://oal.ca.gov/emergency_regulations/emergency_regulations_under_review/" },
+    { "label": "OAL Proposed Regulations Under Review", "url": "https://oal.ca.gov/proposed-regulations/" },
+    { "label": "CAL FIRE ReadyForWildfire Defensible Space (in-app browser 2026-10-26)", "url": "https://readyforwildfire.org/prepare-for-wildfire/defensible-space/" }
+  ]
+}
