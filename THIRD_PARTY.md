@@ -20,6 +20,9 @@ Every library, model, dataset and asset used by EmberScan, with its license. Upd
 | ESLint, eslint-config-next | 9.x / 16.4.3 | MIT | Linting |
 | Geist, Geist Mono (via next/font) | — | SIL Open Font License 1.1 | UI fonts |
 | Pydantic | 2.x | MIT | Rule pack and output schemas |
+| NumPy | 2.x | BSD-3-Clause | Image math (sharpness, hashing) |
+| Pillow | 11-12.x | MIT-CMU (HPND) | Image loading and resizing |
+| FFmpeg (system tool, not bundled) | 9.x | LGPL/GPL (invoked as a separate program) | Video normalization, frames, audio |
 | pytest | 8.x | MIT | Tests |
 | Ruff | 0.x | MIT | Python lint |
 | Hatchling | 1.x | MIT | Python packaging |
