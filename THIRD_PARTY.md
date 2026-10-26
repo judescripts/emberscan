@@ -13,7 +13,16 @@ Every library, model, dataset and asset used by EmberScan, with its license. Upd
 
 | Name | Version | License | Used for |
 |---|---|---|---|
-| _none yet_ | | | |
+| Next.js | 16.4.3 | MIT | Web app framework |
+| React, React DOM | 19.3.0 | MIT | UI |
+| Tailwind CSS | 4.x | MIT | Styling |
+| TypeScript | 5.x | Apache-2.0 | Type checking |
+| ESLint, eslint-config-next | 9.x / 16.4.3 | MIT | Linting |
+| Geist, Geist Mono (via next/font) | — | SIL Open Font License 1.1 | UI fonts |
+| Pydantic | 2.x | MIT | Rule pack and output schemas |
+| pytest | 8.x | MIT | Tests |
+| Ruff | 0.x | MIT | Python lint |
+| Hatchling | 1.x | MIT | Python packaging |
 
 ## Data and content
 

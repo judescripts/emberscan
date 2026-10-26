@@ -35,9 +35,26 @@ All code, data and assets in this repository were created during the hackathon, 
 | Muse Image | Report | "After" illustrations of top fixes |
 | Muse Spark Open | Open-weight path | Runs a core agent path on Baseten/Modal/Fireworks |
 
+## Repository layout
+
+| Path | What |
+|---|---|
+| `apps/web` | Next.js web app (mobile-first) |
+| `workers` | Python pipeline: frames, segmentation, geometry, rules engine, agent |
+| `docs/rules` | Rule packs (`us-ca.json`) and the California rules reference |
+| `docs/adr` | Architecture decisions |
+
 ## Setup
 
-Coming soon. See [`.env.example`](.env.example) for configuration. Never commit `.env`.
+Requires Node.js 24, Python 3.12 and ffmpeg. Copy [`.env.example`](.env.example) to `.env` and fill it in. Never commit `.env`.
+
+```bash
+cd apps/web && npm ci && npm run dev
+```
+
+```bash
+cd workers && python -m venv .venv && .venv/bin/pip install -e ".[dev]" && .venv/bin/pytest
+```
 
 ## License
 
