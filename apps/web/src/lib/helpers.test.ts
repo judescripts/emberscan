@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 import sample from "./sample-report.json";
 import { describeDistance, formatNumber, formatRange, hazardMeasurements } from "./format";
-import type { Report } from "./report-types";
+import type { Hazard, Report } from "./report-types";
 import { computeScore, projectedScore, rulePenalty, scoreLabel, topFixes } from "./score";
 import { filterTasks, rescanTransition } from "./tasks";
-import { DEFAULT_GEOMETRY, layoutPins, zoneScale } from "./zonemap";
+import { DEFAULT_GEOMETRY, fracsFor, layoutPins, zoneScale } from "./zonemap";
 
 const report = sample as unknown as Report;
 
@@ -85,6 +85,22 @@ describe("zone-map scale", () => {
     const south = pins.filter((p) => report.hazards.find((h) => h.id === p.hazardId)!.side === "S");
     const b = (DEFAULT_GEOMETRY.size + DEFAULT_GEOMETRY.buildingH) / 2;
     south.forEach((p) => expect(p.y).toBeGreaterThan(b));
+  });
+
+  it("never overlaps pins, even with many hazards on one wall", () => {
+    const many = Array.from({ length: 13 }, (_, i) => ({
+      ...report.hazards[0],
+      id: `h${i}`,
+      side: (i < 10 ? "W" : "E") as Hazard["side"],
+      distance_ft: { min: (i % 4) * 0.4, max: (i % 4) * 0.4 + 0.3 },
+    }));
+    const pins = layoutPins(many);
+    expect(pins).toHaveLength(13);
+    for (let i = 0; i < pins.length; i++)
+      for (let j = i + 1; j < pins.length; j++)
+        expect(Math.hypot(pins[i].x - pins[j].x, pins[i].y - pins[j].y)).toBeGreaterThanOrEqual(22);
+    // all close to the wall, so Zone 0 gets most of the drawing
+    expect(fracsFor(many)[1]).toBeGreaterThan(0.5);
   });
 });
 

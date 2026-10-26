@@ -1,7 +1,7 @@
 import { sideWords } from "@/lib/format";
 import type { Hazard, RuleResult } from "@/lib/report-types";
 import { hazardStatus } from "@/lib/score";
-import { bandRect, buildingRect, DEFAULT_GEOMETRY, layoutPins } from "@/lib/zonemap";
+import { bandRect, buildingRect, DEFAULT_GEOMETRY, fracsFor, layoutPins } from "@/lib/zonemap";
 import { WallProfile } from "./wall-profile";
 
 const PIN_FILL = { fail: "var(--fail)", "needs-review": "var(--review)", pass: "var(--pass)" } as const;
@@ -16,7 +16,8 @@ const BANDS = [
 export function ZoneMap({ hazards, results, buildingLabel }: { hazards: Hazard[]; results: RuleResult[]; buildingLabel: string }) {
   const g = DEFAULT_GEOMETRY;
   const b = buildingRect(g);
-  const pins = layoutPins(hazards, g);
+  const fracs = fracsFor(hazards);
+  const pins = layoutPins(hazards, g, fracs);
   const unmapped = hazards.filter((h) => !pins.some((p) => p.hazardId === h.id));
   const byId = new Map(hazards.map((h) => [h.id, h]));
 
@@ -68,7 +69,7 @@ export function ZoneMap({ hazards, results, buildingLabel }: { hazards: Hazard[]
           evidence below.
         </desc>
         {BANDS.map((band) => {
-          const r = bandRect(band.ft, g);
+          const r = bandRect(band.ft, g, fracs);
           return (
             <g key={band.ft}>
               <rect x={r.x} y={r.y} width={r.w} height={r.h} rx={Math.min(r.r, 40)} fill={band.fill} stroke="var(--zone-line)" strokeWidth={0.8} />
@@ -120,7 +121,19 @@ export function ZoneMap({ hazards, results, buildingLabel }: { hazards: Hazard[]
           <span className="h-3 w-3 rounded-full border border-dashed border-muted" aria-hidden /> Near a zone line
         </li>
       </ul>
-      <p className="text-center text-xs text-muted">Sketch, not to scale: the first 5 ft are stretched so Zone 0 is readable.</p>
+      <p className="text-center text-xs text-muted">
+        Sketch, not to scale: zones are stretched to fit where the hazards are. Distances per wall below.
+      </p>
+      {(["N", "E", "S", "W"] as const).map((side) => {
+        const onSide = hazards.filter((h) => h.side === side && h.distance_ft);
+        if (!onSide.length) return null;
+        return (
+          <div key={side} className="mt-2 border-t border-line pt-3">
+            <h3 className="mb-1 text-sm font-semibold text-ink">{sideWords(side)} · distance from the wall</h3>
+            <WallProfile hazards={onSide} all={hazards} results={results} />
+          </div>
+        );
+      })}
       {unmapped.length > 0 && (
         <p className="text-xs text-muted">
           Side not known:{" "}

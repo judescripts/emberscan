@@ -1,6 +1,6 @@
 import type { Hazard, RuleResult } from "@/lib/report-types";
 import { hazardStatus } from "@/lib/score";
-import { zoneScale } from "@/lib/zonemap";
+import { fracsFor, zoneScale } from "@/lib/zonemap";
 
 const FILL = { fail: "var(--fail)", "needs-review": "var(--review)", pass: "var(--pass)" } as const;
 const BANDS = [
@@ -21,7 +21,8 @@ export function WallProfile({ hazards, all, results }: { hazards: Hazard[]; all:
   const top = 48;
   const row = 26;
   const H = top + Math.max(hazards.length, 1) * row + 12;
-  const x = (ft: number) => left + zoneScale(ft) * span;
+  const fracs = fracsFor(hazards); // zoom to where these hazards are
+  const x = (ft: number) => left + zoneScale(ft, fracs) * span;
   return (
     <svg viewBox={`0 0 ${W} ${H}`} className="mx-auto w-full max-w-md" role="img" aria-labelledby="wallprofile-title">
       <title id="wallprofile-title">{`Distance from the wall for ${hazards.length} measured hazards`}</title>
