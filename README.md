@@ -30,7 +30,7 @@ All code, data and assets in this repository were created during the hackathon, 
 
 A fix like "clear the first 5 ft of combustibles" is abstract. EmberScan shows it on your own building: Muse Image edits the real video frame to show only that fix done, next to the frame as it is now.
 
-- **A preview, never evidence.** It is marked on the picture itself ("AI-generated preview · not a photo", dashed frame) and in the caption. It is never measured, and the score never changes because of it. Only a rescan updates the score; the caption shows the projected score for that fix.
+- **A preview, never evidence.** It is marked on the picture itself ("AI-generated preview" badge, dashed frame) and in the caption. It is never measured, and the score never changes because of it. Only a rescan updates the score; the caption shows the projected score for that fix.
 - **Checked before it is shown.** Muse Spark compares each pair and drops a preview that shows no change or misrepresents the fix (an inspection fix pictured as removal).
 - **Easy to read.** Orange outlines mark what the scan found; dashed outlines mark the same spot in the preview.
 - **Private.** Previews are drawn from frames that already passed the privacy guard and never add people.

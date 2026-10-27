@@ -43,7 +43,7 @@ export function AfterPicture({ fix, report, imageBase }: { fix: Fix; report: Rep
               src: url(ill.after_path),
               label: "Goal · AI preview",
               now: false,
-              alt: `AI-generated preview, not a photo: what it should look like after: ${fix.title}`,
+              alt: `AI-generated preview of what it should look like after: ${fix.title}`,
             },
           ].map((p) => (
             <div
@@ -98,7 +98,7 @@ export function AfterPicture({ fix, report, imageBase }: { fix: Fix; report: Rep
                   <svg viewBox="0 0 16 16" className="h-3 w-3 shrink-0" fill="currentColor" aria-hidden>
                     <path d="M8 0l1.8 5.2L15 7l-5.2 1.8L8 14l-1.8-5.2L1 7l5.2-1.8z" />
                   </svg>
-                  AI-generated preview · not a photo
+                  AI-generated preview
                 </span>
               )}
             </div>
