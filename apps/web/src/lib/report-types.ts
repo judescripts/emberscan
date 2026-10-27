@@ -202,11 +202,11 @@ export const PIPELINE_STAGES = [
   "upload",
   "normalize",
   "frames",
+  "narration", // runs alongside tracking, so it's listed next to it
   "segment",
   "privacy",
   "measure",
   "rules",
-  "narration",
   "agent",
   "report",
 ] as const;

@@ -13,7 +13,11 @@ export const STAGE_INFO: Record<PipelineStage, { title: string; what: string; to
   },
   measure: { title: "Measure distances", what: "Uses the scale marker and the ground to turn pixels into feet, as ranges.", tool: "Marker + ground plane" },
   rules: { title: "Check the rules", what: "Checks every rule in the pack, with citations. Same input, same result.", tool: "Rules engine (us-ca)" },
-  narration: { title: "Listen to narration", what: "Ties what you said while filming to the hazards near that moment.", tool: "Muse Voice Transcribe" },
+  narration: {
+    title: "Listen to narration",
+    what: "Transcribes what you said while filming, alongside tracking. Once hazards are measured, ties each remark to the hazards near that moment.",
+    tool: "Muse Voice Transcribe",
+  },
   agent: {
     title: "Plan the fixes",
     what: "Plans, calls tools over the results and verifies every claim. Then Muse Image pictures the top fixes from blurred frames, and Muse Spark drops any picture that doesn't show its fix.",

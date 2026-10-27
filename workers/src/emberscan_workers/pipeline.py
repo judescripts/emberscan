@@ -46,11 +46,11 @@ STAGES = [
     "upload",
     "normalize",
     "frames",
+    "narration",  # runs alongside segment
     "segment",
     "privacy",
     "measure",
     "rules",
-    "narration",
     "agent",
     "report",
 ]
