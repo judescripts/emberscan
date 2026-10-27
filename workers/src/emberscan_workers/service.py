@@ -201,7 +201,11 @@ async def create_scan(
 def _job(scan_id: str) -> ScanJob:
     if not SCAN_ID.match(scan_id):
         raise HTTPException(404, "no such scan")
-    job = JOBS.get(scan_id) or _load_job(scan_id)
+    job = JOBS.get(scan_id)
+    if job is None or job.status in ("done", "failed"):
+        # A finished scan's report.json can be rewritten (e.g. its after pictures redrawn), so
+        # it is read from disk rather than served from memory.
+        job = _load_job(scan_id) or job
     if job is None:
         raise HTTPException(404, "no such scan")
     JOBS[scan_id] = job

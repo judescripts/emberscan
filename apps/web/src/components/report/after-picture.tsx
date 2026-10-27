@@ -11,7 +11,9 @@ import { HideIfBroken } from "./hide-if-broken";
 export function AfterPicture({ fix, report, imageBase }: { fix: Fix; report: Report; imageBase: string | null }) {
   const ill = fix.illustration;
   if (!ill || !imageBase) return null;
-  const url = (p: string) => `${imageBase}/${p.split("/").map(encodeURIComponent).join("/")}`;
+  // A redraw keeps the file names, so the URL carries a version: browsers cache report images.
+  const version = hash(`${ill.hazard_id}|${ill.frame_index}|${ill.prompt}|${ill.check_reason ?? ""}`);
+  const url = (p: string) => `${imageBase}/${p.split("/").map(encodeURIComponent).join("/")}?v=${version}`;
   const W = Number(report.video.width) || 1280;
   const H = Number(report.video.height) || 720;
   const hazardNo = report.hazards.findIndex((h) => h.id === ill.hazard_id) + 1;
@@ -131,4 +133,10 @@ export function AfterPicture({ fix, report, imageBase }: { fix: Fix; report: Rep
       </figure>
     </HideIfBroken>
   );
+}
+
+function hash(text: string): string {
+  let h = 0;
+  for (let i = 0; i < text.length; i++) h = (Math.imul(31, h) + text.charCodeAt(i)) | 0;
+  return (h >>> 0).toString(36);
 }
