@@ -23,8 +23,18 @@ All code, data and assets in this repository were created during the hackathon, 
 3. **Protect:** a privacy guard blurs any people and license plates (found by SAM 3.1 in the same pass) in every frame before evidence or pictures are made, and deletes the raw video when the scan ends. It's code, not a model choice, and the agent trace shows it.
 4. **Measure:** a printed scale marker on the ground sets real-world scale; each hazard gets a distance range and a zone.
 5. **Check:** a deterministic rules engine returns pass / fail / needs-review per rule, with citations.
-6. **Plan:** a Muse Spark Open agent (open weights, on Baseten; hosted Muse Spark as backup) calls tools (hazards, measurements, rules, cost), a code verifier checks every claim, and it builds the fix plan. It can never override a rule result. Muse Image then draws an "after" picture of the top fixes from the real video frame, labelled as an AI illustration.
+6. **Plan:** a Muse Spark Open agent (open weights, on Baseten; hosted Muse Spark as backup) calls tools (hazards, measurements, rules, cost), a code verifier checks every claim, and it builds the fix plan. It can never override a rule result. Then Muse Image draws an AI preview of each top fix (see below).
 7. **Fix and rescan:** track fixes; a rescan verifies them and updates the score.
+
+## AI previews of the fix
+
+A fix like "clear the first 5 ft of combustibles" is abstract. EmberScan shows it on your own building: Muse Image edits the real video frame to show only that fix done, next to the frame as it is now.
+
+- **A preview, never evidence.** It is marked on the picture itself ("AI-generated preview · not a photo", dashed frame) and in the caption. It is never measured, and the score never changes because of it. Only a rescan updates the score; the caption shows the projected score for that fix.
+- **Checked before it is shown.** Muse Spark compares each pair and drops a preview that shows no change or misrepresents the fix (an inspection fix pictured as removal).
+- **Easy to read.** Orange outlines mark what the scan found; dashed outlines mark the same spot in the preview.
+- **Private.** Previews are drawn from frames that already passed the privacy guard and never add people.
+- **Useful to hand over.** Most fixes belong to someone else (the property manager, a landscaper); a picture of the goal is easier to pass on than a rule citation.
 
 ## Meta models used
 
@@ -34,7 +44,7 @@ All code, data and assets in this repository were created during the hackathon, 
 | Muse Spark Open | Fix-plan agent (primary) | Meta's open-weight model on Baseten plans the fixes with tool calls; same verifier and trace ([benchmarks](docs/benchmarks.md)) |
 | Muse Spark | Agent fallback, eaves, address research | Hosted backup for the fix plan; reads roof overhang from corner clips; researches the address |
 | Muse Voice Transcribe | Narration | Ties spoken notes to locations in the video |
-| Muse Image | Report | "After" pictures of the top fixes, edited from the real video frame and labelled as AI illustrations |
+| Muse Image | Fix previews | AI preview of what each top fix should look like, edited from your own (blurred) video frame |
 
 Built with Muse Spark Open.
 

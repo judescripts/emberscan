@@ -9,7 +9,7 @@ How each piece of EmberScan earns points. Stage 1 (pass/fail): fits a problem st
 | Criterion | Weight | How EmberScan scores | Stories |
 |---|---|---|---|
 | **Impact** | 30% | Wildfire ignition mostly starts with embers on what's next to the house; residents and HOA boards can't measure or interpret defensible-space rules; insurers are non-renewing. EmberScan turns a 2-minute video into a cited, prioritized fix plan with owner vs HOA responsibility, then verifies fixes by rescan. | E1, E3, E7, E4, D2 |
-| **Use of Meta AI tooling** | 25% | Five Meta models working together: SAM 3.1 (tracking across the walkaround), Muse Spark (tool-calling agent), Muse Voice Transcribe (narration tied to locations), Muse Image ("after" illustrations of fixes), Muse Spark Open (open-weight path on Baseten/Modal). Each has a real job; none is a single description call. | C1, D2, B4, E8, D4 |
+| **Use of Meta AI tooling** | 25% | Five Meta models working together: SAM 3.1 (tracking across the walkaround), Muse Spark (tool-calling agent), Muse Voice Transcribe (narration tied to locations), Muse Image (AI previews of fixes, checked by Muse Spark), Muse Spark Open (open-weight path on Baseten/Modal). Each has a real job; none is a single description call. | C1, D2, B4, E8, D4 |
 | **Demo** | 25% | Live product on a public URL; a 3-minute video that opens with hazards tracked across the video, measured distances, rule citations and the agent's plan, then a rescan that verifies a real fix. Side-by-side with a general chatbot on the same footage. | G1, G2, G3, F2 |
 | **Technical depth & execution** | 20% | Ground-plane geometry from a printed marker with uncertainty ranges; deterministic, tested rules engine over versioned rule packs; verifiable agent with a code-level checker and stored trace; cost guardrails; clean dated git history. | C2, C3, C5, D1, D3, F1, F3 |
 
@@ -38,5 +38,5 @@ How each piece of EmberScan earns points. Stage 1 (pass/fail): fits a problem st
 | SAM 3.1 | Vision pipeline | Complete hazard inventory with stable IDs across the whole walkaround |
 | Muse Spark | Agent | Plans the assessment, calls tools, explains and prioritizes |
 | Muse Voice Transcribe | Narration | Adds context the camera can't see ("this woodpile is unit 6's") |
-| Muse Image | Report | Shows what the fix looks like on the real building |
+| Muse Image | Report | AI preview of what the fix should look like on the real building, marked as AI and checked by Muse Spark |
 | Muse Spark Open | Open-weight path | Production fix-plan step on an open model |
