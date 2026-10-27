@@ -9,6 +9,7 @@ import type { Scan } from "@/lib/db/schema";
 import { formatDate } from "@/lib/format";
 import { scoreLabel } from "@/lib/score";
 import { firstCitation, pipelineSummary } from "@/lib/summary";
+import { BuildingCover } from "@/components/building-cover";
 
 export const metadata: Metadata = { title: "Reports" };
 
@@ -77,6 +78,7 @@ async function Reports() {
             return (
               <li key={b.id}>
                 <Card className="flex flex-col gap-3">
+                  <BuildingCover building={b} bleed className="[&_img]:max-h-40" />
                   <div className="flex items-start gap-3">
                     {r ? (
                       <ScoreBadge score={r.score.score} />

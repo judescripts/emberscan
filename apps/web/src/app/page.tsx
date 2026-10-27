@@ -6,6 +6,7 @@ import { currentContext } from "@/lib/current";
 import { latestDone, listBuildings, listScans } from "@/lib/db/queries";
 import { scoreLabel } from "@/lib/score";
 import { firstCitation, pipelineSummary } from "@/lib/summary";
+import { BuildingCover } from "@/components/building-cover";
 
 export default function BuildingsPage() {
   return (
@@ -73,6 +74,7 @@ async function Buildings() {
           return (
             <li key={b.id}>
               <Card className="flex h-full flex-col gap-3">
+                <BuildingCover building={b} bleed />
                 <div className="flex items-start gap-3">
                   {report ? (
                     <ScoreBadge score={report.score.score} />

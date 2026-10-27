@@ -21,6 +21,7 @@ import { getPack, packLabel } from "@/lib/rules";
 import { projectedScore, scoreLabel, topFixes } from "@/lib/score";
 import { taskRuleId } from "@/lib/tasks";
 import { isUuid } from "@/lib/ids";
+import { BuildingCover } from "@/components/building-cover";
 
 export const metadata: Metadata = { title: "Report" };
 
@@ -73,6 +74,7 @@ async function ReportView({ params }: { params: PageProps<"/report/[scanId]">["p
     <article className="flex flex-col gap-5">
       {/* 1. Header */}
       <header>
+        <BuildingCover building={building} className="mb-4 max-h-56 [&_img]:max-h-56" />
         <div className="mb-1 flex flex-wrap items-center gap-2 text-sm text-muted">
           {scan.isSample && <SampleBadge />}
           <span>{community?.name}</span>
