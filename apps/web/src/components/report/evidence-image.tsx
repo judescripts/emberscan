@@ -17,11 +17,15 @@ export function EvidenceImage({
   alt,
   measurement,
   reasons,
+  width,
+  height,
 }: {
   src: string;
   alt: string;
   measurement: string | null;
   reasons: Reason[];
+  width?: number; // frame size, so the page reserves the space before the image loads
+  height?: number;
 }) {
   const [open, setOpen] = useState(false);
   const shown = reasons.filter((r) => r.status !== "pass");
@@ -36,7 +40,7 @@ export function EvidenceImage({
       disabled={!hasWhy}
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={src} alt={alt} className="block h-auto w-full" loading="lazy" />
+      <img src={src} alt={alt} width={width} height={height} className="block h-auto w-full" loading="lazy" />
       {hasWhy && (
         <>
           <span

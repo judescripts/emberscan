@@ -63,6 +63,8 @@ function Frame({ hazard, report, imageBase, n, tone }: { hazard: Hazard; report:
           alt={`Video frame ${ev!.frame_index} showing ${hazard.label}`}
           measurement={hazardMeasurements(hazard)[0] ?? null}
           reasons={reasons}
+          width={W}
+          height={Math.round(H * 1.06)} // frame plus the caption strip the worker adds under it
         />
         <figcaption className="mt-2.5 flex items-start gap-2 text-xs text-muted">
           <span className={cx("shrink-0 rounded px-1.5 py-0.5 font-bold text-surface", BG[tone])}>{n}</span>

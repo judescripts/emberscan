@@ -16,7 +16,8 @@ function openFor(hash: string) {
     if (p instanceof HTMLDetailsElement) p.open = true;
     p = p.parentElement;
   }
-  setTimeout(() => el.scrollIntoView({ block: "start" }), 0); // after the sections open
+  // after the sections open; again once lazy images above have had a moment to load and shift things
+  for (const ms of [0, 350, 900]) setTimeout(() => el.scrollIntoView({ block: "start" }), ms);
 }
 
 /** Sticky jump bar for the report, plus collapse/expand all for its folding sections. */
