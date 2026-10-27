@@ -81,6 +81,8 @@ export interface Illustration {
   frame_index: number;
   model: string;
   prompt: string;
+  checked?: boolean; // Muse Spark compared the pair and saw the fix
+  check_reason?: string;
 }
 
 export interface AgentStep {

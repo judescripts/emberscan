@@ -1,9 +1,12 @@
 import type { Fix, Report } from "@/lib/report-types";
+import { projectedScore } from "@/lib/score";
+import { cx } from "../ui";
 import { HideIfBroken } from "./hide-if-broken";
 
 /**
- * Now vs. after the fix, side by side: the clean video frame and the same frame edited by Muse Image.
- * Always labelled as an AI illustration; it is never measured and never counts as evidence.
+ * Now vs. the goal, side by side: the real video frame and the same frame edited by Muse Image to
+ * show what the fix should look like. The preview is marked as AI on the picture itself (badge,
+ * dashed frame) and in the caption; it is never measured and never changes the score.
  */
 export function AfterPicture({ fix, report, imageBase }: { fix: Fix; report: Report; imageBase: string | null }) {
   const ill = fix.illustration;
@@ -29,15 +32,27 @@ export function AfterPicture({ fix, report, imageBase }: { fix: Fix; report: Rep
       return { id, x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
     });
   const stroke = Math.max(3, Math.round(W / 160));
+  const projected = projectedScore(report, [fix]);
   return (
     <HideIfBroken>
       <figure className="m-0 mt-3">
         <div className="grid grid-cols-2 gap-2">
           {[
-            { src: url(ill.before_path), label: "Now", now: true, alt: `Video frame ${ill.frame_index} before the fix` },
-            { src: url(ill.after_path), label: "After the fix", now: false, alt: `AI illustration of the same view after: ${fix.title}` },
+            { src: url(ill.before_path), label: "Now · your video", now: true, alt: `Video frame ${ill.frame_index}, now` },
+            {
+              src: url(ill.after_path),
+              label: "Goal · AI preview",
+              now: false,
+              alt: `AI-generated preview, not a photo: what it should look like after: ${fix.title}`,
+            },
           ].map((p) => (
-            <div key={p.label} className="relative overflow-hidden rounded-xl bg-soft">
+            <div
+              key={p.label}
+              className={cx(
+                "relative overflow-hidden rounded-xl bg-soft",
+                !p.now && "outline-2 -outline-offset-2 outline-white/90 outline-dashed",
+              )}
+            >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={p.src} alt={p.alt} width={W} height={H} loading="lazy" className="block h-auto w-full" />
               {boxes.length > 0 && (
@@ -78,11 +93,20 @@ export function AfterPicture({ fix, report, imageBase }: { fix: Fix; report: Rep
               <span className="absolute top-2 left-2 rounded-full bg-black/60 px-2 py-0.5 text-[11px] font-semibold text-white">
                 {p.label}
               </span>
+              {!p.now && (
+                <span className="absolute inset-x-2 bottom-2 flex items-center justify-center gap-1 rounded-lg bg-black/70 px-2 py-1 text-center text-[11px] font-bold tracking-wide text-white uppercase">
+                  <svg viewBox="0 0 16 16" className="h-3 w-3 shrink-0" fill="currentColor" aria-hidden>
+                    <path d="M8 0l1.8 5.2L15 7l-5.2 1.8L8 14l-1.8-5.2L1 7l5.2-1.8z" />
+                  </svg>
+                  AI-generated preview · not a photo
+                </span>
+              )}
             </div>
           ))}
         </div>
         <figcaption className="mt-1.5 text-xs text-muted">
-          <span className="font-semibold text-ink">AI illustration (Muse Image), not a measurement.</span> It edits frame {ill.frame_index}
+          <span className="font-semibold text-ink">AI preview by Muse Image, not a measurement.</span> What this fix should look like, drawn
+          from frame {ill.frame_index}
           {hazardNo > 0 && (
             <>
               {" "}
@@ -91,10 +115,18 @@ export function AfterPicture({ fix, report, imageBase }: { fix: Fix; report: Rep
                 evidence {hazardNo}
               </a>
             </>
-          )}{" "}
-          to show what this fix could look like.
-          {boxes.length > 0 && " The orange outline is what the scan found; the dashed one marks the same spot after."} Rescan after the
-          work to check it.
+          )}
+          .{boxes.length > 0 && " Orange: what the scan found. Dashed: the same spot in the preview."}
+          {ill.checked && " Muse Spark checked that the preview shows this fix."} The score only changes when a rescan confirms the work
+          {projected > report.score.score && (
+            <>
+              : projected{" "}
+              <strong className="text-ink">
+                {report.score.score} → {projected}
+              </strong>
+            </>
+          )}
+          .
         </figcaption>
       </figure>
     </HideIfBroken>
