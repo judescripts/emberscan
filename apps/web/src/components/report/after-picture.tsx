@@ -1,4 +1,5 @@
 import type { Fix, Report } from "@/lib/report-types";
+import { HideIfBroken } from "./hide-if-broken";
 
 /**
  * Now vs. after the fix, side by side: the clean video frame and the same frame edited by Muse Image.
@@ -29,54 +30,73 @@ export function AfterPicture({ fix, report, imageBase }: { fix: Fix; report: Rep
     });
   const stroke = Math.max(3, Math.round(W / 160));
   return (
-    <figure className="m-0 mt-3">
-      <div className="grid grid-cols-2 gap-2">
-        {[
-          { src: url(ill.before_path), label: "Now", now: true, alt: `Video frame ${ill.frame_index} before the fix` },
-          { src: url(ill.after_path), label: "After the fix", now: false, alt: `AI illustration of the same view after: ${fix.title}` },
-        ].map((p) => (
-          <div key={p.label} className="relative overflow-hidden rounded-xl bg-soft">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={p.src} alt={p.alt} width={W} height={H} loading="lazy" className="block h-auto w-full" />
-            {boxes.length > 0 && (
-              <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="pointer-events-none absolute inset-0 h-full w-full" aria-hidden>
-                {boxes.map((r) => (
-                  <g key={r.id}>
-                    <rect x={r.x} y={r.y} width={r.w} height={r.h} rx={stroke * 3} fill="none" stroke="black" strokeOpacity={0.5} strokeWidth={stroke * 2} />
-                    <rect
-                      x={r.x}
-                      y={r.y}
-                      width={r.w}
-                      height={r.h}
-                      rx={stroke * 3}
-                      fill="none"
-                      stroke={p.now ? "#f97316" : "white"}
-                      strokeWidth={stroke}
-                      strokeDasharray={p.now ? undefined : `${stroke * 3} ${stroke * 2}`}
-                    />
-                  </g>
-                ))}
-              </svg>
-            )}
-            <span className="absolute top-2 left-2 rounded-full bg-black/60 px-2 py-0.5 text-[11px] font-semibold text-white">{p.label}</span>
-          </div>
-        ))}
-      </div>
-      <figcaption className="mt-1.5 text-xs text-muted">
-        <span className="font-semibold text-ink">AI illustration (Muse Image), not a measurement.</span> It edits frame {ill.frame_index}
-        {hazardNo > 0 && (
-          <>
-            {" "}
-            of{" "}
-            <a href={`#${ill.hazard_id}`} className="underline underline-offset-2">
-              evidence {hazardNo}
-            </a>
-          </>
-        )}{" "}
-        to show what this fix could look like.
-        {boxes.length > 0 && " The orange outline is what the scan found; the dashed one marks the same spot after."} Rescan after the
-        work to check it.
-      </figcaption>
-    </figure>
+    <HideIfBroken>
+      <figure className="m-0 mt-3">
+        <div className="grid grid-cols-2 gap-2">
+          {[
+            { src: url(ill.before_path), label: "Now", now: true, alt: `Video frame ${ill.frame_index} before the fix` },
+            { src: url(ill.after_path), label: "After the fix", now: false, alt: `AI illustration of the same view after: ${fix.title}` },
+          ].map((p) => (
+            <div key={p.label} className="relative overflow-hidden rounded-xl bg-soft">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={p.src} alt={p.alt} width={W} height={H} loading="lazy" className="block h-auto w-full" />
+              {boxes.length > 0 && (
+                <svg
+                  viewBox={`0 0 ${W} ${H}`}
+                  preserveAspectRatio="none"
+                  className="pointer-events-none absolute inset-0 h-full w-full"
+                  aria-hidden
+                >
+                  {boxes.map((r) => (
+                    <g key={r.id}>
+                      <rect
+                        x={r.x}
+                        y={r.y}
+                        width={r.w}
+                        height={r.h}
+                        rx={stroke * 3}
+                        fill="none"
+                        stroke="black"
+                        strokeOpacity={0.5}
+                        strokeWidth={stroke * 2}
+                      />
+                      <rect
+                        x={r.x}
+                        y={r.y}
+                        width={r.w}
+                        height={r.h}
+                        rx={stroke * 3}
+                        fill="none"
+                        stroke={p.now ? "#f97316" : "white"}
+                        strokeWidth={stroke}
+                        strokeDasharray={p.now ? undefined : `${stroke * 3} ${stroke * 2}`}
+                      />
+                    </g>
+                  ))}
+                </svg>
+              )}
+              <span className="absolute top-2 left-2 rounded-full bg-black/60 px-2 py-0.5 text-[11px] font-semibold text-white">
+                {p.label}
+              </span>
+            </div>
+          ))}
+        </div>
+        <figcaption className="mt-1.5 text-xs text-muted">
+          <span className="font-semibold text-ink">AI illustration (Muse Image), not a measurement.</span> It edits frame {ill.frame_index}
+          {hazardNo > 0 && (
+            <>
+              {" "}
+              of{" "}
+              <a href={`#${ill.hazard_id}`} className="underline underline-offset-2">
+                evidence {hazardNo}
+              </a>
+            </>
+          )}{" "}
+          to show what this fix could look like.
+          {boxes.length > 0 && " The orange outline is what the scan found; the dashed one marks the same spot after."} Rescan after the
+          work to check it.
+        </figcaption>
+      </figure>
+    </HideIfBroken>
   );
 }

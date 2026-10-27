@@ -58,3 +58,22 @@ export async function GET(_req: Request, ctx: RouteContext<"/api/scans/[id]">) {
     { headers: { "cache-control": "no-store" } },
   );
 }
+
+// POST /api/scans/:id: re-pull a finished scan's report from the worker (after the worker redrew
+// or recomputed part of it, e.g. its after pictures) and store it again.
+export async function POST(_req: Request, ctx: RouteContext<"/api/scans/[id]">) {
+  const { id } = await ctx.params;
+  if (!isUuid(id)) return Response.json({ error: "not_found" }, { status: 404 });
+  const db = await getDb();
+  const scan = await getScan(db, id);
+  if (!scan?.workerScanId || scan.status !== "done") return Response.json({ error: "not_done" }, { status: 409 });
+  const building = await getBuilding(db, scan.buildingId);
+  try {
+    const w = await getWorkerScan(scan.workerScanId);
+    if (!building || !w.report) return Response.json({ error: "no_report" }, { status: 409 });
+    await attachReport(db, id, building, w.report);
+  } catch (err) {
+    return Response.json({ error: String((err as Error).message ?? err) }, { status: 502 });
+  }
+  return Response.json({ ok: true }, { headers: { "cache-control": "no-store" } });
+}
