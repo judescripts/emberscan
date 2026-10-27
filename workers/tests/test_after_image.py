@@ -9,14 +9,23 @@ import cv2
 import httpx
 import numpy as np
 
-from emberscan_workers.after_image import edit_prompt, illustrate_fixes, pick_hazard
+from emberscan_workers.after_image import (
+    edit_prompt,
+    illustrate_fixes,
+    pick_hazard,
+    where_in_frame,
+)
 from emberscan_workers.contracts import BBox, Evidence, Fix, Hazard, Range
 from emberscan_workers.meta import MetaClient
 from emberscan_workers.spend import SpendLedger
 
 
 def hazard(
-    hid: str, cls: str, frame: int, dist: tuple[float, float] | None, box: float = 1
+    hid: str,
+    cls: str,
+    frame: int,
+    dist: tuple[float, float] | None,
+    box: tuple[float, float, float, float] = (0, 0, 1, 1),
 ) -> Hazard:
     return Hazard(
         id=hid,
@@ -31,7 +40,7 @@ def hazard(
             Evidence(
                 frame_index=frame,
                 timestamp_ms=0,
-                bbox=BBox(left=0, top=0, right=box, bottom=box),
+                bbox=BBox(left=box[0], top=box[1], right=box[2], bottom=box[3]),
                 image_path=f"evidence/{hid}.jpg",
             )
         ],
@@ -70,12 +79,30 @@ def test_pictures_the_closest_measured_hazard_and_describes_only_the_fix() -> No
 
 
 def test_prefers_a_hazard_in_view_over_a_sliver_that_is_closer() -> None:
-    sliver = hazard("h-shrub-edge", "shrub", 1, (0.5, 1.0), box=5)
-    big = hazard("h-shrub-big", "shrub", 3, (1.5, 2.0), box=60)
-    by_id = {h.id: h for h in (sliver, big)}
-    f = fix("f1", [sliver.id, big.id])
-    assert pick_hazard(f, by_id, frame_area=64 * 36).id == "h-shrub-big"
-    assert pick_hazard(f, by_id).id == "h-shrub-edge"  # no frame size: closest wins
+    small = hazard("h-shrub-small", "shrub", 1, (0.5, 1.0), box=(10, 10, 15, 15))
+    big = hazard("h-shrub-big", "shrub", 3, (1.5, 2.0), box=(5, 5, 30, 60))
+    by_id = {h.id: h for h in (small, big)}
+    f = fix("f1", [small.id, big.id])
+    assert pick_hazard(f, by_id, size=(36, 64)).id == "h-shrub-big"
+    assert pick_hazard(f, by_id).id == "h-shrub-small"  # no frame size: closest wins
+
+
+def test_a_box_cut_off_by_the_frame_edge_loses_to_one_fully_in_view() -> None:
+    edge = hazard("h-edge", "shrub", 1, (0.0, 0.8), box=(640, 595, 720, 1096))  # 8% of frame
+    inside = hazard("h-inside", "shrub", 2, (0.0, 0.5), box=(200, 600, 420, 860))  # 6%
+    by_id = {h.id: h for h in (edge, inside)}
+    assert pick_hazard(fix("f1", ["h-edge", "h-inside"]), by_id, size=(720, 1280)).id == "h-inside"
+    # every box cut off: the biggest one, not the first listed
+    wide = hazard("h-wide", "shrub", 3, (0.0, 0.8), box=(0, 510, 318, 834))
+    by_id = {h.id: h for h in (edge, wide)}
+    assert pick_hazard(fix("f2", ["h-edge", "h-wide"]), by_id, size=(720, 1280)).id == "h-wide"
+
+
+def test_prompt_says_where_the_hazard_is() -> None:
+    h = hazard("h-right", "shrub", 1, (0.0, 0.5), box=(500, 900, 700, 1200))
+    assert where_in_frame(h, (720, 1280)) == "on the right side, near the bottom"
+    prompt = edit_prompt(fix("f1", ["h-right"]), {h.id: h}, h, (720, 1280))
+    assert "Start with the shrub on the right side, near the bottom of the photo." in prompt
 
 
 def _frames(tmp: Path) -> None:

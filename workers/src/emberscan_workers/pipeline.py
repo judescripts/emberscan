@@ -432,7 +432,8 @@ async def run_scan(
             "rules",
             "done",
             f"{len(engine.results)} rules · {n.fails} fail · "
-            f"{n.reviews} need review · {n.passes} pass",
+            f"{n.reviews} need review · {n.passes} pass"
+            + (f" · {n.not_covered} not covered by the video" if n.not_covered else ""),
         )
 
         scan_tools = ScanTools(hazards, engine.results, transcript, fps)
