@@ -117,6 +117,7 @@ export function EvidenceList({ report, imageBase }: { report: Report; imageBase:
         const status = hazardStatus(h.id, report.results);
         const tone = toneFor(status);
         const rules = report.results.filter((r) => r.hazard_ids.includes(h.id));
+        const fixes = report.fixes.filter((f) => f.hazard_ids.includes(h.id));
         return (
           <li key={h.id} id={h.id} className="target-ring scroll-mt-28 rounded-2xl border border-line bg-surface p-4">
             <div className="mb-3 flex items-start gap-3">
@@ -152,6 +153,27 @@ export function EvidenceList({ report, imageBase }: { report: Report; imageBase:
                     “{h.narration}”
                     <span className="mt-0.5 block text-xs text-muted not-italic">From your narration (Muse Voice Transcribe)</span>
                   </blockquote>
+                )}
+                {fixes.length > 0 && (
+                  <div>
+                    <p className="text-xs font-semibold text-muted">{fixes.length === 1 ? "Fix for this" : "Fixes for this"}</p>
+                    <ul className="mt-1 flex flex-col gap-1">
+                      {fixes.map((f) => (
+                        <li key={f.id}>
+                          <a
+                            href={`#fix-${f.id}`}
+                            className="inline-flex items-center gap-1.5 rounded-lg bg-soft px-2.5 py-1.5 text-sm font-semibold text-ink hover:bg-line"
+                          >
+                            <span className="text-muted">Fix {f.priority}</span>
+                            <span>{f.title}</span>
+                            <span aria-hidden className="text-muted">
+                              →
+                            </span>
+                          </a>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
                 )}
                 {rules.length > 0 && (
                   <ul className="flex flex-col gap-1">
