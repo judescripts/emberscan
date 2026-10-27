@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
+import { MarkerExample } from "@/components/scan/marker-example";
 import { ScanForm } from "@/components/scan/scan-form";
 import { ButtonLink, Card, PageHeader, SectionTitle, ShortDisclaimer, Skeleton } from "@/components/ui";
 import { currentContext } from "@/lib/current";
@@ -12,7 +13,7 @@ export const metadata: Metadata = { title: "New scan" };
 export default function NewScanPage(props: PageProps<"/scan">) {
   return (
     <main>
-      <PageHeader title="New scan" kicker="One building, one walkaround video" />
+      <PageHeader title="New scan" kicker="One building, a few short clips" />
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
         <FilmingGuide />
         <div className="flex flex-col gap-5">
@@ -87,42 +88,34 @@ function FilmingGuide() {
       <SectionTitle kicker="Step 1">How to film</SectionTitle>
       <ol className="flex flex-col gap-3 text-sm text-ink">
         <li>
-          <strong>Print the scale marker</strong> and lay it <strong>flat on the ground</strong> with one edge touching the wall. It turns
-          pixels into feet.{" "}
+          <strong>Print the scale marker</strong> at 100% and lay it <strong>flat on the ground</strong> with the orange{" "}
+          <strong>WALL EDGE</strong> strip touching the base of the wall. It turns pixels into feet.{" "}
           <a href="/emberscan-scale-marker.pdf" className="font-semibold text-brand underline underline-offset-2" target="_blank" rel="noopener">
             Scale marker (PDF)
           </a>
         </li>
         <li>
-          <strong>Step about 10 ft out</strong> from the wall and walk all the way around the building, holding the phone at chest
-          height, landscape, slow and steady.
+          <strong>One short take per planting bed</strong> (8–10 s): put the marker in the middle of the bed, stand 6–10 ft back
+          and film the bed with the sheet <strong>in view the whole time</strong>. Then move the marker to the next bed.
         </li>
         <li>
-          Keep the <strong>ground line and the wall</strong> in view. Pause on anything close to the house: mulch, shrubs, firewood,
-          fences, under decks.
+          Aim at the <strong>base of the wall</strong>. Plants, mulch, firewood and fences within about 8 ft of the sheet get
+          measured. Portrait or landscape both work.
         </li>
         <li>
-          At one corner, hold a <strong>3-second shot</strong> looking up at the eaves so EmberScan can measure how deep they are.
+          <strong>Tag each clip&apos;s side</strong> (N/E/S/W) when you upload, or just say “north side…” while filming, so hazards
+          land on the zone map.
         </li>
         <li>
-          <strong>Talk as you go</strong> if it helps: “this woodpile is unit 6&apos;s”. Narration is matched to what&apos;s on screen.
+          <strong>Eaves:</strong> if the roof overhangs, add 3–5 s corner clips filmed along the wall so the overhang shows. Flat
+          roof or parapet? Set the building to “No overhang” and skip them.
+        </li>
+        <li>
+          Keep people, licence plates and views inside out of frame. <strong>Talk as you go</strong> if it helps: “this woodpile
+          is unit 6&apos;s”.
         </li>
       </ol>
-      <div
-        aria-hidden
-        className="mt-4 grid grid-cols-[1fr_auto] items-end gap-2 rounded-xl bg-soft p-3 text-[11px] text-muted"
-      >
-        <div className="relative h-16">
-          <div className="absolute inset-x-0 top-0 h-10 rounded-t border border-b-0 border-muted bg-surface text-center leading-10">wall</div>
-          <div className="absolute bottom-0 left-4 h-4 w-10 border border-ink bg-[repeating-linear-gradient(90deg,var(--text)_0_4px,transparent_4px_8px)] opacity-70" />
-          <div className="absolute right-0 bottom-0 left-0 border-t border-dashed border-muted" />
-        </div>
-        <div className="text-right">
-          marker flat,
-          <br />
-          edge on the wall
-        </div>
-      </div>
+      <MarkerExample />
     </Card>
   );
 }
