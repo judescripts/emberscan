@@ -138,3 +138,23 @@ def test_falls_back_to_lookups_when_model_never_submits() -> None:
     labels = [f.label for f in note.facts]
     assert "Fire hazard zone" in labels and "Recent fires nearby" in labels
     assert "State law" in labels
+
+
+def test_safe_entry_retries_once_when_the_agent_stops(monkeypatch) -> None:
+    from emberscan_workers import research as R
+    from emberscan_workers.contracts import AgentStep
+
+    def note(model: str | None, step: str) -> R.BuildingNote:
+        n = R.BuildingNote(address="1 Test Rd", summary=step)
+        n.model, n.trace = model, [AgentStep(kind="note", summary=step)]
+        return n
+
+    tries = iter([note(None, "Agent stopped (ReadTimeout)."), note("m", "ok")])
+
+    async def fake(*args, **kwargs):
+        return next(tries)
+
+    monkeypatch.setattr(R, "research_address", fake)
+    monkeypatch.setenv("META_API_KEY", "test")
+    out = asyncio.run(R.research_address_safe("1 Test Rd", SpendLedger("t", 0.05)))
+    assert out.model == "m"

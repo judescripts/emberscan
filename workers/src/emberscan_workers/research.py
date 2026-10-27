@@ -573,7 +573,13 @@ async def research_address_safe(address: str, ledger: SpendLedger) -> BuildingNo
         httpx.AsyncClient(timeout=HTTP_TIMEOUT_S, headers={"User-Agent": "EmberScan"}) as http,
         MetaClient() as client,
     ):
-        return await research_address(address, client, ledger, http=http)
+        note = await research_address(address, client, ledger, http=http)
+        if note.model is None:  # the agent stopped (timeout, API error): one more try
+            retry = await research_address(address, client, ledger, http=http)
+            if retry.model is not None:
+                retry.trace = [*note.trace[:-1], *retry.trace]  # keep why the first try stopped
+                return retry
+        return note
 
 
 __all__ = ["BuildingNote", "research_address", "research_address_safe", "law_that_applies"]
