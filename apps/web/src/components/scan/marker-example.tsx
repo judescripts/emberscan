@@ -81,11 +81,11 @@ export function MarkerExample() {
         <g fontFamily="inherit" fontSize="10.5" fontWeight={700} fill="#1b1715">
           <line x1="166" y1={base - 1} x2="166" y2="42" stroke="#ff6a00" strokeWidth={1.5} />
           <circle cx="166" cy={base - 1} r="3" fill="#ff6a00" />
-          <rect x="88" y="22" width="156" height="22" rx="11" fill="#ffffff" stroke="#ff6a00" />
+          <rect x="70" y="20" width="192" height="26" rx="13" fill="#ffffff" stroke="#ff6a00" />
           <text x="166" y="37" textAnchor="middle">
             Orange edge touches the wall
           </text>
-          <rect x="246" y="166" width="88" height="34" rx="9" fill="#ffffff" opacity={0.92} />
+          <rect x="240" y="164" width="96" height="38" rx="10" fill="#ffffff" opacity={0.92} />
           <text x="290" y="180" textAnchor="middle">
             Flat on the
           </text>
