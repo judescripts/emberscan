@@ -9,7 +9,7 @@ function Logo() {
   return (
     <Link href="/" className="flex shrink-0 items-center gap-1.5 text-white" aria-label="EmberScan home">
       <Flame />
-      <span className="hidden text-base font-bold tracking-tight sm:inline">EmberScan</span>
+      <span className="text-[15px] font-bold tracking-tight sm:text-base">EmberScan</span>
     </Link>
   );
 }
@@ -41,12 +41,12 @@ export async function TopBar() {
         communities={communities.map((c) => ({ id: c.id, name: c.name, isSample: c.isSample }))}
         currentId={current?.id ?? null}
       />
-      <div className="flex flex-1 justify-center">
+      <div className="hidden flex-1 justify-center md:flex">
         <TopTabs />
       </div>
       <Link
         href="/manage"
-        className="rounded-full border border-white/20 px-3 py-1.5 text-sm font-semibold text-nav-label hover:text-white"
+        className="hidden rounded-full border border-white/20 px-3 py-1.5 text-sm font-semibold text-nav-label hover:text-white sm:inline-block"
       >
         Manage
       </Link>

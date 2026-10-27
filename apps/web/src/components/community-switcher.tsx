@@ -5,6 +5,7 @@ import { useTransition } from "react";
 import { selectCommunity } from "@/app/actions";
 
 const NEW = "__new";
+const MANAGE = "__manage";
 
 export function CommunitySwitcher({
   communities,
@@ -16,7 +17,7 @@ export function CommunitySwitcher({
   const router = useRouter();
   const [pending, start] = useTransition();
   return (
-    <div className="min-w-0">
+    <div className="min-w-0 flex-1 md:flex-none">
       <label htmlFor="community-switcher" className="sr-only">
         Community
       </label>
@@ -30,9 +31,13 @@ export function CommunitySwitcher({
             router.push("/manage/new");
             return;
           }
+          if (v === MANAGE) {
+            router.push("/manage");
+            return;
+          }
           start(() => selectCommunity(v));
         }}
-        className="max-w-[44vw] truncate rounded-lg border border-white/15 bg-white/10 py-1.5 pr-7 pl-2 text-sm font-semibold text-white sm:max-w-xs [&>option]:text-black"
+        className="w-full truncate rounded-lg md:w-auto md:max-w-xs border border-white/15 bg-white/10 py-1.5 pr-7 pl-2 text-sm font-semibold text-white [&>option]:text-black"
       >
         {communities.length === 0 && <option value={NEW}>No community yet</option>}
         {communities.map((c) => (
@@ -42,6 +47,7 @@ export function CommunitySwitcher({
           </option>
         ))}
         <option value={NEW}>+ New community</option>
+        <option value={MANAGE}>Manage communities…</option>
       </select>
     </div>
   );

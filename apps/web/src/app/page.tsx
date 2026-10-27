@@ -108,7 +108,7 @@ async function Buildings() {
                 {report && summary && (
                   <div className="flex flex-col gap-1.5 text-sm">
                     <div className="flex flex-wrap gap-1.5">
-                      {report.score.fails > 0 && <Pill tone="fail">{report.score.fails} fails</Pill>}
+                      {report.score.fails > 0 && <Pill tone="fail">{report.score.fails} {report.score.fails === 1 ? "fail" : "fails"}</Pill>}
                       {report.score.reviews > 0 && <Pill tone="review">{report.score.reviews} need review</Pill>}
                       {report.score.passes > 0 && <Pill tone="pass">{report.score.passes} pass</Pill>}
                     </div>
