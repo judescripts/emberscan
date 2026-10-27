@@ -23,6 +23,8 @@ export function CommunitySwitcher({
       </label>
       <select
         id="community-switcher"
+        // Chrome on iOS tags form fields with __gcruniqueid before React hydrates; harmless.
+        suppressHydrationWarning
         value={currentId ?? NEW}
         disabled={pending}
         onChange={(e) => {
