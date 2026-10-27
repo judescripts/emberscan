@@ -191,11 +191,15 @@ export async function updateTask(taskId: string, update: TaskUpdate): Promise<Fo
 }
 
 /** Remove a scan that failed or was a test; tasks from other scans are untouched. */
-export async function deleteScan(scanId: string) {
+export async function deleteScan(scanId: string, stay = false) {
   const db = await getDb();
   const [row] = await db.select().from(scans).where(eq(scans.id, scanId));
   if (!row) return;
   if (row.status !== "failed") throw new Error("Only failed scans can be removed.");
   await db.delete(scans).where(eq(scans.id, scanId));
+  if (stay) {
+    refresh(); // removed from a list: stay on the page
+    return;
+  }
   redirect("/");
 }
