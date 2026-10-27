@@ -3,6 +3,7 @@ import type { Hazard, RuleResult } from "@/lib/report-types";
 import { hazardStatus } from "@/lib/score";
 import { bandRect, buildingRect, DEFAULT_GEOMETRY, fracsFor, layoutMap, PIN_R } from "@/lib/zonemap";
 import { WallProfile } from "./wall-profile";
+import { ZoomableMap } from "./zoomable-map";
 
 const PIN_FILL = { fail: "var(--fail)", "needs-review": "var(--review)", pass: "var(--pass)" } as const;
 
@@ -79,12 +80,7 @@ export function ZoneMap({ hazards: all, results, buildingLabel }: { hazards: Haz
 
   return (
     <div className="flex flex-col gap-3">
-      <svg
-        viewBox={view}
-        className="mx-auto w-full max-w-md rounded-xl"
-        role="img"
-        aria-labelledby="zonemap-title zonemap-desc"
-      >
+      <ZoomableMap fullView={`0 0 ${g.size} ${g.size}`} fitView={view}>
         <title id="zonemap-title">{`Zone map for ${buildingLabel}`}</title>
         <desc id="zonemap-desc">
           Top-down sketch of the building with Zone 0, 1 and 2 bands and {pins.length} numbered hazard pins. Each pin links to its
@@ -105,12 +101,6 @@ export function ZoneMap({ hazards: all, results, buildingLabel }: { hazards: Haz
         <text x={g.size / 2} y={g.size / 2 + 4} textAnchor="middle" fontSize={11} fill="var(--muted)" fontWeight={600}>
           Building
         </text>
-        <g aria-hidden>
-          <text x={vx + 2 * half - 14} y={vy + 18} textAnchor="middle" fontSize={11} fontWeight={700} fill="var(--text)">
-            N
-          </text>
-          <path d={`M${vx + 2 * half - 14} ${vy + 22} l-4 9 h8 z`} fill="var(--text)" />
-        </g>
         {pins.map((p) => {
           const h = byId.get(p.hazardId)!;
           const status = hazardStatus(h.id, results);
@@ -142,7 +132,7 @@ export function ZoneMap({ hazards: all, results, buildingLabel }: { hazards: Haz
             </text>
           </a>
         ))}
-      </svg>
+      </ZoomableMap>
       <ul className="flex flex-wrap justify-center gap-x-4 gap-y-1 text-xs text-muted" aria-label="Legend">
         <li className="flex items-center gap-1.5">
           <span className="h-3 w-3 rounded-full bg-fail" aria-hidden /> Fails a rule in force
@@ -155,7 +145,7 @@ export function ZoneMap({ hazards: all, results, buildingLabel }: { hazards: Haz
         </li>
       </ul>
       <p className="text-center text-xs text-muted">
-        Sketch, not to scale: zones are stretched to fit where the hazards are.
+        Sketch, not to scale: zones are stretched so the closest ones are readable. Use Zoom in for a closer look.
         {clusters.length > 0 && " Big markers group a crowded wall: tap one for its list."} Each wall is listed below.
         {okCount > 0 && ` ${okCount} more seen with no issue (listed under Evidence).`}
       </p>
@@ -168,29 +158,39 @@ export function ZoneMap({ hazards: all, results, buildingLabel }: { hazards: Haz
             <h3 className="mb-1 text-sm font-semibold text-ink">
               {sideWords(side)} · {onSide.length} to look at
             </h3>
-            {measured.length > 0 && <WallProfile hazards={measured} all={all} results={results} />}
-            <ul className="mt-2 flex flex-col divide-y divide-line rounded-xl border border-line">
-              {onSide.map((h) => {
-                const n = all.indexOf(h) + 1;
-                const s = hazardStatus(h.id, results);
-                return (
-                  <li key={h.id}>
-                    <a href={`#${h.id}`} className="flex min-h-11 items-center gap-3 px-3 py-2 text-sm hover:bg-soft">
-                      <span
-                        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold text-surface"
-                        style={{ background: s ? PIN_FILL[s] : "var(--muted)" }}
-                      >
-                        {n}
-                      </span>
-                      <span className="min-w-0 flex-1 text-ink">{h.label}</span>
-                      <span className="shrink-0 text-xs text-muted">
-                        {h.distance_ft ? `${h.distance_ft.min}–${h.distance_ft.max} ft` : "not measured"}
-                      </span>
-                    </a>
-                  </li>
-                );
-              })}
-            </ul>
+{measured.length > 0 && <WallProfile hazards={measured} all={all} results={results} />}
+            {[
+              { title: `On the chart (${measured.length})`, items: measured },
+              { title: `Not measured · check on site (${onSide.length - measured.length})`, items: onSide.filter((h) => !h.distance_ft) },
+            ]
+              .filter((grp) => grp.items.length > 0)
+              .map((grp) => (
+                <div key={grp.title} className="mt-3">
+                  <p className="mb-1 text-xs font-semibold text-muted">{grp.title}</p>
+                  <ul className="flex flex-col divide-y divide-line rounded-xl border border-line">
+                    {grp.items.map((h) => {
+                      const n = all.indexOf(h) + 1;
+                      const s = hazardStatus(h.id, results);
+                      return (
+                        <li key={h.id}>
+                          <a href={`#${h.id}`} className="flex min-h-11 items-center gap-3 px-3 py-2 text-sm hover:bg-soft">
+                            <span
+                              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold text-surface"
+                              style={{ background: s ? PIN_FILL[s] : "var(--muted)" }}
+                            >
+                              {n}
+                            </span>
+                            <span className="min-w-0 flex-1 text-ink">{h.label}</span>
+                            <span className="shrink-0 text-xs text-muted">
+                              {h.distance_ft ? `${h.distance_ft.min}–${h.distance_ft.max} ft` : "no marker in view"}
+                            </span>
+                          </a>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+              ))}
           </div>
         );
       })}
