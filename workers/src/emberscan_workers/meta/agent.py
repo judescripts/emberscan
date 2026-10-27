@@ -483,11 +483,11 @@ async def run_agent(
         except SpendLimitExceeded:
             if chat.provider != "baseten" or last:
                 raise
-            # Spark Open bills at list price (from Baseten credits); hosted is far cheaper.
+            # Spark Open bills Baseten credits at list price, under its own per-run limit.
             notes.append(
                 AgentStep(
                     kind="note",
-                    summary=f"{chat.label} would pass the scan's spend limit; "
+                    summary=f"{chat.label} would pass the scan's partner spend limit; "
                     f"trying {chats[n + 1].label}.",
                 )
             )
@@ -537,8 +537,10 @@ async def _run_agent_once(chat: Any, ledger: SpendLedger, tools: ScanTools) -> A
     items: list[dict[str, str]] = [{"type": "user", "text": "Plan the fixes for this scan."}]
     retried = False
     started = time.monotonic()
-    for _ in range(MAX_TURNS):
-        ledger.check("agent", token_cost(chat.price_model, *chat.est_tokens))
+    seen: set[str] = set()  # tool calls already answered, to stop loops
+    for turn in range(MAX_TURNS):
+        partner = chat.provider == "baseten"  # Baseten credits, not the Meta account
+        ledger.check("agent", token_cost(chat.price_model, *chat.est_tokens), partner=partner)
         t0 = time.monotonic()
         reply = await chat.send(items)
         ledger.record(
@@ -549,6 +551,7 @@ async def _run_agent_once(chat: Any, ledger: SpendLedger, tools: ScanTools) -> A
             ),
             {"input_tokens": reply.input_tokens, "output_tokens": reply.output_tokens},
             time.monotonic() - t0,
+            partner=partner,
         )
         calls = reply.calls
         if not calls:
@@ -616,6 +619,19 @@ async def _run_agent_once(chat: Any, ledger: SpendLedger, tools: ScanTools) -> A
                     dropped,
                     model={**model_info, "seconds": seconds},
                 )
+            key = f"{name}:{json.dumps(args, sort_keys=True)}"
+            if key in seen:  # a loop: answer once, then push toward the plan
+                outputs.append(
+                    {
+                        "type": "tool",
+                        "call_id": call["call_id"],
+                        "output": json.dumps(
+                            {"note": "Already answered above. Call submit_plan now."}
+                        ),
+                    }
+                )
+                continue
+            seen.add(key)
             try:
                 result = tools.call(name, args)
             except Exception as e:  # unknown tool or bad args: tell the model, don't crash
@@ -630,6 +646,13 @@ async def _run_agent_once(chat: Any, ledger: SpendLedger, tools: ScanTools) -> A
             )
             outputs.append(
                 {"type": "tool", "call_id": call["call_id"], "output": json.dumps(result)}
+            )
+        if turn >= MAX_TURNS - 3:  # two turns left: the next answer has to be the plan
+            outputs.append(
+                {
+                    "type": "user",
+                    "text": "You're out of turns. Call submit_plan now with your fixes.",
+                }
             )
         items = outputs
 

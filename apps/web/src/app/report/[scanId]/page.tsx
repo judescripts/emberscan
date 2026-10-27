@@ -83,6 +83,15 @@ async function ReportView({ params }: { params: PageProps<"/report/[scanId]">["p
           {report.include_proposed ? " · proposed Zone 0 rules shown" : ""} · {eave}
           {report.video?.duration_s ? ` · ${Math.round(Number(report.video.duration_s))} s walkaround` : ""}
         </p>
+        {report.privacy?.checked && (
+          <p className="mt-1 text-xs text-muted">
+            <a href="#how" className="font-semibold text-ink underline underline-offset-2">
+              Privacy guard
+            </a>
+            : {report.privacy.summary}
+            {report.privacy.raw_deleted.length > 0 && " Raw video deleted after processing."}
+          </p>
+        )}
         <p className="mt-2 rounded-lg bg-soft px-3 py-2 text-xs text-ink">
           Flags likely hazards from video. Not an inspection, and it does not certify that this property is safe or compliant.
         </p>

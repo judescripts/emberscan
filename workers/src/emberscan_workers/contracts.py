@@ -103,7 +103,11 @@ class Fix(BaseModel):
 
 
 class AgentStep(BaseModel):
-    kind: Literal["plan", "tool_call", "tool_result", "verify", "output", "note"]
+    # privacy: the guard that blurs people and plates before anything is kept;
+    # illustrate: Muse Image after pictures of the top fixes.
+    kind: Literal[
+        "privacy", "plan", "tool_call", "tool_result", "verify", "output", "illustrate", "note"
+    ]
     summary: str
     detail: dict | None = None
 
@@ -139,6 +143,8 @@ class Report(BaseModel):
     agent_trace: list[AgentStep] = Field(default_factory=list)
     # {model, provider ("baseten" | "meta"), label, seconds}; None = rule-based fallback plan
     agent_model: dict | None = None
+    # {people, plates, frames_blurred, regions_blurred, raw_deleted, checked, summary, model}
+    privacy: dict | None = None
     cost: dict = Field(default_factory=dict)  # spend ledger summary
     disclaimer: str = (
         "EmberScan flags likely wildfire hazards and suggests fixes based on published "

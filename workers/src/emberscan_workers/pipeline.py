@@ -1,7 +1,8 @@
 """End-to-end scan pipeline: video in, Report out (docs/contracts/README.md).
 
 Stages: upload -> normalize -> frames -> segment (SAM 3.1, one request per concept, run
-concurrently) -> measure (scale marker + ground plane) -> rules (deterministic engine) ->
+concurrently, plus "person" and "license plate") -> privacy (blur them in every frame before
+anything is kept) -> measure (scale marker + ground plane) -> rules (deterministic engine) ->
 narration (Voice Transcribe, alongside segmentation) -> agent (Muse Spark) -> report.
 Every model call goes through the per-run SpendLedger.
 """
@@ -9,8 +10,10 @@ Every model call goes through the per-run SpendLedger.
 from __future__ import annotations
 
 import asyncio
+import math
 import os
 import re
+import shutil
 import time
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
@@ -19,7 +22,7 @@ from pathlib import Path
 from typing import Any
 
 from .after_image import illustrate_fixes
-from .contracts import BBox, Evidence, Hazard, Range, Report
+from .contracts import AgentStep, BBox, Evidence, Hazard, Range, Report
 from .eave import EaveEstimate, estimate_eave
 from .hazards import BY_CLASS, CORE, Concept
 from .media import VideoInfo, extract_audio, extract_frames, join_clips, normalize, probe
@@ -28,6 +31,14 @@ from .meta.agent import ScanTools, run_agent
 from .meta.openweight import OpenWeightClient, open_weight_enabled
 from .meta.sam import SegmentationResult, Track, segment_video
 from .meta.voice import Transcript, transcribe
+from .privacy import (
+    PRIVACY_CONCEPTS,
+    PRIVACY_PROMPTS,
+    PrivacyReport,
+    delete_raw,
+    guard_frames,
+    split_privacy,
+)
 from .rules import evaluate, load_pack
 from .spend import SpendLedger, SpendLimitExceeded
 from .spend.pricing import SAM_USD_PER_1K_FRAMES, sam_video_cost
@@ -37,6 +48,7 @@ STAGES = [
     "normalize",
     "frames",
     "segment",
+    "privacy",
     "measure",
     "eaves",
     "rules",
@@ -56,7 +68,10 @@ def sam_fps_for(duration_s: float, n_concepts: int, run_limit_usd: float) -> flo
     if duration_s <= 0 or n_concepts <= 0:
         return SAM_FPS
     frames = SAM_BUDGET_SHARE * run_limit_usd / (n_concepts * SAM_USD_PER_1K_FRAMES / 1000)
-    return round(max(MIN_SAM_FPS, min(SAM_FPS, frames / duration_s)), 2)
+    # One frame of headroom, rounded down: the frame count is rounded later, and an estimate a
+    # hair over the budget would refuse the scan.
+    fps = math.floor((frames - 1) / duration_s * 100) / 100
+    return max(MIN_SAM_FPS, min(SAM_FPS, fps))
 
 
 SAM_CONCURRENCY = int(os.environ.get("SAM_CONCURRENCY", "6"))
@@ -91,6 +106,11 @@ class ScanJob:
     marker_frames: list[Path] = field(default_factory=list)  # full-res twins of the SAM frames
     report: Report | None = None
     created_at: str = field(default_factory=lambda: datetime.now(UTC).isoformat())
+
+    @property
+    def sam_concepts(self) -> list[Concept]:
+        """Hazard concepts plus the privacy ones (always on: the guard is not optional)."""
+        return [*self.concepts, *PRIVACY_CONCEPTS]
 
     def stages_detail(self, name: str) -> str:
         return next((s["detail"] for s in self.stages if s["name"] == name), "")
@@ -303,6 +323,8 @@ async def run_scan(
     p = Progress(job, notify)
     job.status = "processing"
     ledger = SpendLedger.from_env(job.scan_id, log_path=job.dir / "spend.jsonl")
+    uploads = [job.video_path, *job.extra_clips, *job.corner_clips]  # deleted when the scan ends
+    guarded = False  # frames on disk are blurred
     try:
         await p.set("upload", "done", job.video_path.name)
 
@@ -316,8 +338,9 @@ async def run_scan(
             clips = [vars(s) for s in spans]
             job.video_path = job.dir / "joined.mp4"
         src = probe(job.video_path)
-        job.sam_fps = fps = sam_fps_for(src.duration_s, len(job.concepts), ledger.limit_usd)
-        sam_est = sam_video_cost(round(src.duration_s * fps), requests=len(job.concepts))
+        n_sam = len(job.sam_concepts)
+        job.sam_fps = fps = sam_fps_for(src.duration_s, n_sam, ledger.limit_usd)
+        sam_est = sam_video_cost(round(src.duration_s * fps), requests=n_sam)
         if sam_est > SAM_BUDGET_SHARE * ledger.limit_usd:
             raise SpendLimitExceeded(
                 f"{src.duration_s / 60:.1f} min of footage needs about ${sam_est:.2f} of SAM 3.1 "
@@ -356,8 +379,20 @@ async def run_scan(
         await p.set("frames", "done", f"{len(frames)} frames extracted")
 
         narration_task = asyncio.create_task(_narration(job, client, ledger, norm, p))
-        results = await _segment(job, client, ledger, sam_video, p)
+        results, private = split_privacy(await _segment(job, client, ledger, sam_video, p))
         split_at_clips(results, clips, fps)
+
+        await p.set("privacy", "running", "Blurring people and license plates in every frame")
+        privacy = await asyncio.to_thread(
+            guard_frames, private, [f.path for f in frames], job.marker_frames or None
+        )
+        if not privacy.checked:  # fail closed: never keep frames nobody checked
+            raise RuntimeError(
+                "The privacy check for people and license plates couldn't run, so nothing "
+                "was kept. Please try the scan again."
+            )
+        guarded = True
+        await p.set("privacy", "done", privacy.summary())
 
         await p.set("measure", "running")
         tracks = {
@@ -411,6 +446,24 @@ async def run_scan(
             agent = await run_agent(client, ledger, scan_tools, site_type=job.site_type)
         await p.set("agent", "running", "Muse Image is drawing after pictures of the top fixes")
         pictures = await illustrate_fixes(client, ledger, agent.fixes, hazards, job.dir)
+        # The loop as the report shows it: guard first, then plan / tools / verify, then picture.
+        raw_deleted = await asyncio.to_thread(delete_raw, job.dir, uploads)
+        privacy.raw_deleted = raw_deleted
+        agent.trace.insert(0, privacy_step(privacy))
+        if pictures:
+            agent.trace.append(
+                AgentStep(
+                    kind="illustrate",
+                    summary=f"Muse Image drew {pictures} after picture(s) from blurred frames, "
+                    "labelled as AI illustrations, not evidence.",
+                    detail={
+                        "fixes": [f.id for f in agent.fixes if f.illustration],
+                        "model": "muse-image-1.0",
+                    },
+                )
+            )
+        if estimate is not None:
+            estimate.frames = []  # corner frames were deleted with the raw video
         await p.set(
             "agent",
             "done",
@@ -446,6 +499,7 @@ async def run_scan(
             fixes=agent.fixes,
             agent_trace=agent.trace,
             agent_model=agent.model,
+            privacy=privacy.as_dict(),
             cost=ledger.summary(),
         )
         (job.dir / "report.json").write_text(report.model_dump_json(indent=2), encoding="utf-8")
@@ -461,6 +515,31 @@ async def run_scan(
         job.status, job.error = "failed", f"{type(e).__name__}: {e}"
         await p.set(job.stage, "failed", job.error)
         raise
+    finally:
+        if job.status != "done":
+            # A failed scan keeps nothing unblurred: raw video always, frames if not yet guarded.
+            await asyncio.to_thread(delete_raw, job.dir, uploads)
+            if not guarded:
+                for d in ("frames", "frames_hi", "evidence", "after"):
+                    shutil.rmtree(job.dir / d, ignore_errors=True)
+
+
+def privacy_step(privacy: PrivacyReport) -> AgentStep:
+    return AgentStep(
+        kind="privacy",
+        summary=f"Privacy guard (runs before anything is kept): {privacy.summary()} "
+        + (
+            "Raw video deleted after processing."
+            if privacy.raw_deleted
+            else "Raw video kept for local debugging."
+        ),
+        detail={
+            "people": privacy.people,
+            "plates": privacy.plates,
+            "frames_blurred": privacy.frames_blurred,
+            "found_by": "SAM 3.1",
+        },
+    )
 
 
 BY_CLASS_BY_PROMPT = {c.prompt: c.cls for c in BY_CLASS.values()}
@@ -469,47 +548,59 @@ BY_CLASS_BY_PROMPT = {c.prompt: c.cls for c in BY_CLASS.values()}
 async def _segment(
     job: ScanJob, client: MetaClient, ledger: SpendLedger, sam_video: VideoInfo, p: Progress
 ) -> list[SegmentationResult]:
-    await p.set("segment", "running", f"SAM 3.1: {len(job.concepts)} hazard types in parallel")
+    concepts = job.sam_concepts
+    await p.set(
+        "segment",
+        "running",
+        f"SAM 3.1: {len(job.concepts)} hazard types + people and plates, in parallel",
+    )
     file_id = await client.upload_file(job.dir / "sam.mp4")
     sem = asyncio.Semaphore(SAM_CONCURRENCY)
     done: list[str] = []
     t0 = time.monotonic()
 
     async def one(c: Concept) -> SegmentationResult | None:
+        # The privacy concepts get a second try: without them the scan can't keep any frames.
+        tries = 2 if c.prompt in PRIVACY_PROMPTS else 1
         async with sem:
-            try:
-                r = await segment_video(
-                    client,
-                    ledger,
-                    job.dir / "sam.mp4",
-                    c.prompt,
-                    sam_video.frame_count,
-                    file_id=file_id,
-                )
-            except SpendLimitExceeded:
-                raise
-            except Exception as e:  # one concept failing shouldn't sink the scan
-                done.append(f"{c.prompt}: error")
-                await p.set("segment", "running", f"'{c.prompt}' failed ({type(e).__name__})")
-                return None
+            for attempt in range(tries):
+                try:
+                    r = await segment_video(
+                        client,
+                        ledger,
+                        job.dir / "sam.mp4",
+                        c.prompt,
+                        sam_video.frame_count,
+                        file_id=file_id,
+                    )
+                    break
+                except SpendLimitExceeded:
+                    raise
+                except Exception as e:  # one concept failing shouldn't sink the scan
+                    if attempt + 1 < tries:
+                        continue
+                    done.append(f"{c.prompt}: error")
+                    await p.set("segment", "running", f"'{c.prompt}' failed ({type(e).__name__})")
+                    return None
             done.append(c.prompt)
             await p.set(
                 "segment",
                 "running",
                 f"SAM 3.1: tracked '{c.prompt}' · {len(r.tracks)} object(s) · "
-                f"{len(done)}/{len(job.concepts)} done",
+                f"{len(done)}/{len(concepts)} done",
             )
             return r
 
     try:
-        results = [r for r in await asyncio.gather(*(one(c) for c in job.concepts)) if r]
+        results = [r for r in await asyncio.gather(*(one(c) for c in concepts)) if r]
     finally:
         await client.delete_file(file_id)
-    objects = sum(len(r.tracks) for r in results)
+    hazard_results = [r for r in results if r.concept not in PRIVACY_PROMPTS]
+    objects = sum(len(r.tracks) for r in hazard_results)
     await p.set(
         "segment",
         "done",
-        f"{len(results)}/{len(job.concepts)} hazard types · "
+        f"{len(hazard_results)}/{len(job.concepts)} hazard types · "
         f"{objects} objects tracked · {time.monotonic() - t0:.0f}s",
     )
     return results

@@ -84,7 +84,7 @@ export interface Illustration {
 }
 
 export interface AgentStep {
-  kind: "plan" | "tool_call" | "tool_result" | "verify" | "output" | "note";
+  kind: "privacy" | "plan" | "tool_call" | "tool_result" | "verify" | "output" | "illustrate" | "note";
   summary: string;
   detail?: Record<string, unknown> | null;
 }
@@ -128,8 +128,21 @@ export interface Report {
   agent_trace: AgentStep[];
   /** The model that planned the fixes; null/absent = rule-based fallback (or an older report). */
   agent_model?: AgentModel | null;
+  /** What the privacy guard blurred and deleted; absent on reports from before Oct 27. */
+  privacy?: PrivacyInfo | null;
   cost: Record<string, unknown>;
   disclaimer: string;
+}
+
+export interface PrivacyInfo {
+  people: number;
+  plates: number;
+  frames_blurred: number;
+  regions_blurred: number;
+  raw_deleted: string[];
+  checked: boolean;
+  summary: string;
+  model: string;
 }
 
 export interface AgentModel {
@@ -184,6 +197,7 @@ export const PIPELINE_STAGES = [
   "normalize",
   "frames",
   "segment",
+  "privacy",
   "measure",
   "eaves",
   "rules",

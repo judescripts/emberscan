@@ -3,11 +3,13 @@ import { IconCheck } from "../icons";
 import { cx } from "../ui";
 
 const KIND: Record<AgentStep["kind"], { label: string; cls: string }> = {
+  privacy: { label: "Privacy guard", cls: "border-trace-fg text-trace-fg" },
   plan: { label: "Plan", cls: "border-trace-fg/60 text-trace-fg" },
   tool_call: { label: "Tool call", cls: "border-trace-muted text-trace-muted" },
   tool_result: { label: "Result", cls: "border-trace-muted text-trace-muted" },
   verify: { label: "Verify", cls: "border-trace-fg text-trace-fg" },
   output: { label: "Output", cls: "border-trace-fg/60 text-trace-fg" },
+  illustrate: { label: "Illustrate", cls: "border-trace-fg/60 text-trace-fg" },
   note: { label: "Note", cls: "border-trace-line text-trace-muted" },
 };
 
@@ -25,6 +27,17 @@ export function AgentTrace({ report }: { report: Report }) {
   const cost = report.cost as { spent_usd?: number; calls?: number };
   const planner = report.agent_model;
   const open = planner?.provider === "baseten";
+  const privacy = report.privacy;
+  const verifies = steps.filter((s) => s.kind === "verify").length;
+  const pictures = report.fixes.filter((f) => f.illustration).length;
+  // The loop in order. Guardrails (privacy before, verifier after) are code the agent can't skip.
+  const loop = [
+    privacy && { label: "Privacy guard", note: privacy.people || privacy.plates ? `${privacy.people + privacy.plates} blurred` : "none seen", guard: true },
+    { label: "Plan", note: open ? "Muse Spark Open" : planner ? "Muse Spark" : "rules", guard: false },
+    { label: "Tool calls", note: String(toolCalls), guard: false },
+    { label: "Verify", note: verifies ? `${verifies}×` : "—", guard: true },
+    pictures > 0 && { label: "Picture", note: `${pictures} after`, guard: false },
+  ].filter(Boolean) as { label: string; note: string; guard: boolean }[];
   return (
     <details id="how" open data-report-section className="group scroll-mt-28 overflow-hidden rounded-2xl bg-trace text-trace-fg">
       <summary className="flex cursor-pointer list-none items-start justify-between gap-3 border-b border-trace-line px-4 py-3 sm:px-5 [&::-webkit-details-marker]:hidden">
@@ -48,6 +61,26 @@ export function AgentTrace({ report }: { report: Report }) {
             <span className="font-mono text-[11px] text-trace-muted">{planner.model}</span>
           </p>
         )}
+        <ol className="mt-3 flex flex-wrap items-center gap-1.5 text-xs" aria-label="The agent loop">
+          {loop.map((s, i) => (
+            <li key={s.label} className="flex items-center gap-1.5">
+              {i > 0 && (
+                <span aria-hidden className="text-trace-muted">
+                  →
+                </span>
+              )}
+              <span
+                className={cx(
+                  "rounded-full border px-2 py-0.5",
+                  s.guard ? "border-trace-fg font-semibold" : "border-trace-line",
+                )}
+              >
+                {s.label} <span className="font-normal text-trace-muted">· {s.note}</span>
+              </span>
+            </li>
+          ))}
+        </ol>
+        <p className="mt-1.5 text-[11px] text-trace-muted">Outlined steps are guardrails written in code: the agent can&apos;t skip or change them.</p>
         </div>
         <span aria-hidden className="mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white/10 transition-transform group-open:rotate-180">
           <svg viewBox="0 0 16 16" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2}>

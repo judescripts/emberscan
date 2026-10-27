@@ -26,5 +26,18 @@ Takeaways:
   on Muse Spark Open first and falls back to hosted Muse Spark if Spark Open fails, gives no
   valid plan, or would push the scan past its spend limit. The report says which model planned.
 
+### Follow-up: a bigger scan (Oct 27, 23 hazards)
+
+In a live scan with 23 hazards, Muse Spark Open called `estimate_cost` 12 times for the same 3
+fix types and ran out of turns, so hosted Muse Spark planned instead. Two loop guards were
+added: a repeated tool call gets "already answered, call submit_plan now", and with two turns
+left the agent is told to submit. Replayed on the same scan, 2 runs each:
+
+| | Hosted Muse Spark | Muse Spark Open |
+|---|---|---|
+| Valid plans | 2 of 2 | 2 of 2 |
+| Fixes per plan | 2, 2 | 3, 3 |
+| Latency, median | 90 s | 36 s |
+
 Re-run: `cd workers && python scripts/bench_agent.py .data/scans/<scan>/report.json --runs 3`.
 Each run calls both models for real.

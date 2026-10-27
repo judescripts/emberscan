@@ -61,6 +61,8 @@ class Budget:
                     cost, at = float(rec["cost_usd"]), float(rec["at"])
                 except (ValueError, KeyError, TypeError):
                     continue
+                if rec.get("partner") or str(rec.get("model", "")).startswith("meta-models/"):
+                    continue  # billed to partner credits (Baseten), not the Meta account
                 total += cost
                 if now - at < DAY_S:
                     day += cost

@@ -202,6 +202,24 @@ def test_open_weight_plans_with_same_tools_and_verifier(tools: ScanTools) -> Non
     assert ledger.records[0].model == "meta-models/muse-spark-open-1026"
 
 
+def test_repeated_tool_calls_are_cut_short_and_the_plan_is_asked_for(tools: ScanTools) -> None:
+    loop = [_chat(("estimate_cost", {"fix_type": "other"}, f"e{i}")) for i in range(6)]
+    submit = _chat(("submit_plan", {"fixes": [fix()], "summary": "s"}, "s1"))
+    handler, calls = _scripted([*loop, submit])
+
+    async def run():
+        async with OpenWeightClient(api_key="k", transport=httpx.MockTransport(handler)) as o:
+            return await run_agent(None, SpendLedger("t", 1.0), tools, open_client=o)
+
+    res = asyncio.run(run())
+    assert res.model and res.model["provider"] == "baseten" and res.fixes
+    repeat = json.loads(calls[2]["messages"][-1]["content"])
+    assert "Already answered" in repeat["note"]  # the repeat isn't run again
+    assert sum(1 for s in res.trace if s.kind == "tool_call" and "estimate_cost" in s.summary) == 1
+    last = calls[-1]["messages"][-1]
+    assert last["role"] == "user" and "out of turns" in last["content"]
+
+
 def test_open_weight_failure_falls_back_to_hosted(tools: ScanTools) -> None:
     def down(request: httpx.Request) -> httpx.Response:
         return httpx.Response(503, json={"error": "overloaded"})
@@ -226,7 +244,7 @@ def test_open_weight_over_run_limit_uses_hosted(tools: ScanTools) -> None:
         raise AssertionError("Spark Open must not be called over the limit")
 
     handler, _ = _scripted([_resp(1, _fc("submit_plan", {"fixes": [fix()], "summary": "s"}, "c1"))])
-    ledger = SpendLedger(run_id="t", limit_usd=0.01)  # below one Spark Open turn, above hosted
+    ledger = SpendLedger(run_id="t", limit_usd=1.0, partner_limit_usd=0.01)  # < one Spark Open turn
 
     async def run():
         async with (

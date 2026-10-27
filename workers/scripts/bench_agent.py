@@ -58,7 +58,7 @@ async def bench(report: Report, runs: int, site: str) -> list[dict]:
                         "turns": len(ledger.records),
                         "tokens_in": sum(r.units["input_tokens"] for r in ledger.records),
                         "tokens_out": sum(r.units["output_tokens"] for r in ledger.records),
-                        "usd": round(ledger.spent_usd, 4),
+                        "usd": round(ledger.spent_usd + ledger.partner_usd, 4),
                         "fixes": len(res.fixes) if res else 0,
                         "valid": bool(res and not res.fell_back),
                         "dropped": len(res.dropped) if res else 0,

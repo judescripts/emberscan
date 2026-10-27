@@ -6,11 +6,20 @@ export const STAGE_INFO: Record<PipelineStage, { title: string; what: string; to
   normalize: { title: "Prepare video", what: "Fixes rotation and frame rate so every frame lines up.", tool: "ffmpeg" },
   frames: { title: "Pick frames", what: "Samples the walkaround and keeps the sharpest frames.", tool: "Keyframe selector" },
   segment: { title: "Find and track hazards", what: "Finds mulch, shrubs, firewood, fences… and follows each one across the video.", tool: "SAM 3.1" },
+  privacy: {
+    title: "Privacy guard",
+    what: "Blurs any people and license plates in every frame before anything is kept, then deletes the raw video. Always on.",
+    tool: "SAM 3.1 + blur",
+  },
   measure: { title: "Measure distances", what: "Uses the scale marker and the ground to turn pixels into feet, as ranges.", tool: "Marker + ground plane" },
   eaves: { title: "Read the eaves", what: "Estimates how far the roof overhangs from your corner clips, as a range.", tool: "Muse Spark (vision)" },
   rules: { title: "Check the rules", what: "Checks every rule in the pack, with citations. Same input, same result.", tool: "Rules engine (us-ca)" },
   narration: { title: "Listen to narration", what: "Ties what you said while filming to the hazards near that moment.", tool: "Muse Voice Transcribe" },
-  agent: { title: "Plan the fixes", what: "Plans, calls tools over the results, and verifies every claim.", tool: "Muse Spark agent" },
+  agent: {
+    title: "Plan the fixes",
+    what: "Plans, calls tools over the results, verifies every claim, then pictures the top fixes.",
+    tool: "Muse Spark Open agent + Muse Image",
+  },
   report: { title: "Write the report", what: "Score, evidence, fix plan and citations in one report.", tool: "Report builder" },
 };
 

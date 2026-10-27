@@ -16,20 +16,21 @@ Entry for the **Meta Global AI Developer Hackathon** (Startup track, problem sta
 
 All code, data and assets in this repository were created during the hackathon, **Oct 26 – Nov 4, 2026**. The git history is the record. Nothing was imported from earlier work.
 
-## How it works (planned)
+## How it works
 
 1. **Film** a walkaround (optionally narrate: "north side, mulch bed against the wall").
 2. **Track:** SAM 3.1 segments and tracks hazards and walls across the video.
-3. **Measure:** a printed scale marker on the ground sets real-world scale; each hazard gets a distance range and a zone.
-4. **Check:** a deterministic rules engine returns pass / fail / needs-review per rule, with citations.
-5. **Plan:** a Muse Spark Open agent (open weights, on Baseten; hosted Muse Spark as backup) calls tools (hazards, measurements, rules, cost), a code verifier checks every claim, and it builds the fix plan. It can never override a rule result. Muse Image then draws an "after" picture of the top fixes from the real video frame, labelled as an AI illustration.
-6. **Fix and rescan:** track fixes; a rescan verifies them and updates the score.
+3. **Protect:** a privacy guard blurs any people and license plates (found by SAM 3.1 in the same pass) in every frame before evidence or pictures are made, and deletes the raw video when the scan ends. It's code, not a model choice, and the agent trace shows it.
+4. **Measure:** a printed scale marker on the ground sets real-world scale; each hazard gets a distance range and a zone.
+5. **Check:** a deterministic rules engine returns pass / fail / needs-review per rule, with citations.
+6. **Plan:** a Muse Spark Open agent (open weights, on Baseten; hosted Muse Spark as backup) calls tools (hazards, measurements, rules, cost), a code verifier checks every claim, and it builds the fix plan. It can never override a rule result. Muse Image then draws an "after" picture of the top fixes from the real video frame, labelled as an AI illustration.
+7. **Fix and rescan:** track fixes; a rescan verifies them and updates the score.
 
 ## Meta models used
 
 | Model | Where | Why |
 |---|---|---|
-| SAM 3.1 | Vision pipeline | Segment and track hazards across the whole video |
+| SAM 3.1 | Vision pipeline, privacy guard | Segment and track hazards across the whole video; find people and plates to blur |
 | Muse Spark Open | Fix-plan agent (primary) | Meta's open-weight model on Baseten plans the fixes with tool calls; same verifier and trace ([benchmarks](docs/benchmarks.md)) |
 | Muse Spark | Agent fallback, eaves, address research | Hosted backup for the fix plan; reads roof overhang from corner clips; researches the address |
 | Muse Voice Transcribe | Narration | Ties spoken notes to locations in the video |
