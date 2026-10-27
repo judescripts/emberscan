@@ -1,7 +1,7 @@
 import { sideWords } from "@/lib/format";
 import type { Hazard, RuleResult } from "@/lib/report-types";
 import { hazardStatus } from "@/lib/score";
-import { bandRect, buildingRect, DEFAULT_GEOMETRY, fracsFor, layoutPins } from "@/lib/zonemap";
+import { bandRect, buildingRect, DEFAULT_GEOMETRY, fracsFor, layoutMap, PIN_R } from "@/lib/zonemap";
 import { WallProfile } from "./wall-profile";
 
 const PIN_FILL = { fail: "var(--fail)", "needs-review": "var(--review)", pass: "var(--pass)" } as const;
@@ -24,11 +24,26 @@ export function ZoneMap({ hazards: all, results, buildingLabel }: { hazards: Haz
   const b = buildingRect(g);
   const fracs = fracsFor(hazards);
   // numbers match the evidence list, which numbers every tracked hazard
-  const pins = layoutPins(hazards, g, fracs).map((p) => ({ ...p, n: all.findIndex((h) => h.id === p.hazardId) + 1 }));
-  const unmapped = hazards.filter((h) => !pins.some((p) => p.hazardId === h.id));
+  const layout = layoutMap(hazards, g, fracs);
+  const pins = layout.pins.map((p) => ({ ...p, n: all.findIndex((h) => h.id === p.hazardId) + 1 }));
+  const clusters = layout.clusters;
+  const placed = new Set([...pins.map((p) => p.hazardId), ...clusters.flatMap((c) => c.hazardIds)]);
+  const unmapped = hazards.filter((h) => !placed.has(h.id));
+  // Crop to the building plus what's drawn around it, so pins are as large as possible on a phone.
+  const pad = PIN_R + 22;
+  const xs = [b.x, b.x + b.w, ...pins.map((p) => p.x), ...clusters.map((c) => c.x)];
+  const ys = [b.y, b.y + b.h, ...pins.map((p) => p.y), ...clusters.map((c) => c.y)];
+  const cx = (Math.min(...xs) + Math.max(...xs)) / 2;
+  const cy = (Math.min(...ys) + Math.max(...ys)) / 2;
+  const half = Math.min(g.size / 2, Math.max(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys)) / 2 + pad);
+  const vx = Math.max(0, Math.min(g.size - 2 * half, cx - half));
+  const vy = Math.max(0, Math.min(g.size - 2 * half, cy - half));
+  const view = `${vx} ${vy} ${2 * half} ${2 * half}`;
+  const worst = (ids: string[]) =>
+    ids.some((id) => hazardStatus(id, results) === "fail") ? PIN_FILL.fail : PIN_FILL["needs-review"];
   const byId = new Map(all.map((h) => [h.id, h]));
 
-  if (pins.length === 0) {
+  if (pins.length === 0 && clusters.length === 0) {
     // No sides recorded: a top-down map would be empty, so show distance from the wall instead.
     const measured = hazards.filter((h) => h.distance_ft);
     const rest = hazards.filter((h) => !h.distance_ft);
@@ -65,8 +80,8 @@ export function ZoneMap({ hazards: all, results, buildingLabel }: { hazards: Haz
   return (
     <div className="flex flex-col gap-3">
       <svg
-        viewBox={`0 0 ${g.size} ${g.size}`}
-        className="mx-auto w-full max-w-md"
+        viewBox={view}
+        className="mx-auto w-full max-w-md rounded-xl"
         role="img"
         aria-labelledby="zonemap-title zonemap-desc"
       >
@@ -91,10 +106,10 @@ export function ZoneMap({ hazards: all, results, buildingLabel }: { hazards: Haz
           Building
         </text>
         <g aria-hidden>
-          <text x={g.size - 16} y={20} textAnchor="middle" fontSize={11} fontWeight={700} fill="var(--text)">
+          <text x={vx + 2 * half - 14} y={vy + 18} textAnchor="middle" fontSize={11} fontWeight={700} fill="var(--text)">
             N
           </text>
-          <path d={`M${g.size - 16} 24 l-4 9 h8 z`} fill="var(--text)" />
+          <path d={`M${vx + 2 * half - 14} ${vy + 22} l-4 9 h8 z`} fill="var(--text)" />
         </g>
         {pins.map((p) => {
           const h = byId.get(p.hazardId)!;
@@ -104,15 +119,29 @@ export function ZoneMap({ hazards: all, results, buildingLabel }: { hazards: Haz
             <a key={p.hazardId} href={`#${p.hazardId}`} aria-label={`Pin ${p.n}: ${h.label}. Go to evidence.`}>
               <title>{`${p.n}. ${h.label}`}</title>
               {h.zone_uncertain && (
-                <circle cx={p.x} cy={p.y} r={15} fill="none" stroke={fill} strokeWidth={1.5} strokeDasharray="3 2.5" />
+                <circle cx={p.x} cy={p.y} r={PIN_R + 4} fill="none" stroke={fill} strokeWidth={1.5} strokeDasharray="3 2.5" />
               )}
-              <circle cx={p.x} cy={p.y} r={11} fill={fill} stroke="var(--surface)" strokeWidth={2} />
-              <text x={p.x} y={p.y + 4} textAnchor="middle" fontSize={11.5} fontWeight={700} fill="var(--surface)">
+              <circle cx={p.x} cy={p.y} r={PIN_R} fill={fill} stroke="var(--surface)" strokeWidth={2} />
+              <text x={p.x} y={p.y + 4.5} textAnchor="middle" fontSize={12.5} fontWeight={700} fill="var(--surface)">
                 {p.n}
               </text>
             </a>
           );
         })}
+        {clusters.map((c) => (
+          <a
+            key={`${c.side}-${c.band}`}
+            href={`#wall-${c.side}`}
+            aria-label={`${c.hazardIds.length} hazards on the ${sideWords(c.side).toLowerCase()} in Zone ${c.band}. Show the list.`}
+          >
+            <title>{`${c.hazardIds.length} hazards here: tap for the list`}</title>
+            <circle cx={c.x} cy={c.y} r={PIN_R + 9} fill={worst(c.hazardIds)} stroke="var(--surface)" strokeWidth={3} />
+            <circle cx={c.x} cy={c.y} r={PIN_R + 13} fill="none" stroke={worst(c.hazardIds)} strokeWidth={1.5} opacity={0.5} />
+            <text x={c.x} y={c.y + 5.5} textAnchor="middle" fontSize={16} fontWeight={800} fill="var(--surface)">
+              {c.hazardIds.length}
+            </text>
+          </a>
+        ))}
       </svg>
       <ul className="flex flex-wrap justify-center gap-x-4 gap-y-1 text-xs text-muted" aria-label="Legend">
         <li className="flex items-center gap-1.5">
@@ -126,16 +155,42 @@ export function ZoneMap({ hazards: all, results, buildingLabel }: { hazards: Haz
         </li>
       </ul>
       <p className="text-center text-xs text-muted">
-        Sketch, not to scale: zones are stretched to fit where the hazards are. Distances per wall below.
+        Sketch, not to scale: zones are stretched to fit where the hazards are.
+        {clusters.length > 0 && " Big markers group a crowded wall: tap one for its list."} Each wall is listed below.
         {okCount > 0 && ` ${okCount} more seen with no issue (listed under Evidence).`}
       </p>
       {(["N", "E", "S", "W"] as const).map((side) => {
-        const onSide = hazards.filter((h) => h.side === side && h.distance_ft);
+        const onSide = hazards.filter((h) => h.side === side);
         if (!onSide.length) return null;
+        const measured = onSide.filter((h) => h.distance_ft);
         return (
-          <div key={side} className="mt-2 border-t border-line pt-3">
-            <h3 className="mb-1 text-sm font-semibold text-ink">{sideWords(side)} · distance from the wall</h3>
-            <WallProfile hazards={onSide} all={all} results={results} />
+          <div key={side} id={`wall-${side}`} className="mt-2 scroll-mt-28 border-t border-line pt-3">
+            <h3 className="mb-1 text-sm font-semibold text-ink">
+              {sideWords(side)} · {onSide.length} to look at
+            </h3>
+            {measured.length > 0 && <WallProfile hazards={measured} all={all} results={results} />}
+            <ul className="mt-2 flex flex-col divide-y divide-line rounded-xl border border-line">
+              {onSide.map((h) => {
+                const n = all.indexOf(h) + 1;
+                const s = hazardStatus(h.id, results);
+                return (
+                  <li key={h.id}>
+                    <a href={`#${h.id}`} className="flex min-h-11 items-center gap-3 px-3 py-2 text-sm hover:bg-soft">
+                      <span
+                        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold text-surface"
+                        style={{ background: s ? PIN_FILL[s] : "var(--muted)" }}
+                      >
+                        {n}
+                      </span>
+                      <span className="min-w-0 flex-1 text-ink">{h.label}</span>
+                      <span className="shrink-0 text-xs text-muted">
+                        {h.distance_ft ? `${h.distance_ft.min}–${h.distance_ft.max} ft` : "not measured"}
+                      </span>
+                    </a>
+                  </li>
+                );
+              })}
+            </ul>
           </div>
         );
       })}

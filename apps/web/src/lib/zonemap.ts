@@ -66,27 +66,53 @@ export function bandRect(ft: number, g: MapGeometry = DEFAULT_GEOMETRY, fracs: Z
 }
 
 const MAPPABLE: Side[] = ["N", "E", "S", "W", "roof"];
-export const PIN_GAP = 25; // centre-to-centre spacing so pins (r=11) never overlap
+export const PIN_R = 13; // pin radius in map units (the map is ~440 units wide)
+export const PIN_GAP = 31; // centre-to-centre spacing: pins never touch
+
+/** Several hazards on one wall in one zone, shown as a single tappable marker when they don't fit. */
+export interface Cluster {
+  side: Side;
+  band: number; // 0 = Zone 0, 1 = Zone 1, 2 = Zone 2
+  hazardIds: string[];
+  x: number;
+  y: number;
+}
+
+function sidePoint(side: Side, b: ReturnType<typeof buildingRect>, t: number, d: number, line: number, lines: number) {
+  switch (side) {
+    case "N":
+      return { x: b.x + b.w / 2 + t, y: b.y - d };
+    case "S":
+      return { x: b.x + b.w / 2 + t, y: b.y + b.h + d };
+    case "E":
+      return { x: b.x + b.w + d, y: b.y + b.h / 2 + t };
+    case "W":
+      return { x: b.x - d, y: b.y + b.h / 2 + t };
+    default: // roof
+      return { x: b.x + b.w / 2 + t, y: b.y + b.h / 2 + (line - (lines - 1) / 2) * PIN_GAP };
+  }
+}
 
 /**
  * Place numbered pins without overlaps. Each hazard goes on its side, at a depth inside its own
- * zone band (so a pin never looks like it's in the wrong zone), spread evenly along the wall.
- * When a wall has more hazards than fit in one line, extra lines are added further out within
- * the same band. Hazards with no side are left off the map (listed instead).
+ * zone band (so a pin never looks like it's in the wrong zone), spread along the wall, in extra
+ * lines further out when needed. When a wall's band can't hold its hazards with full spacing,
+ * they become one cluster marker instead (tap it to get the wall's list). Hazards with no side
+ * are left off the map (listed instead).
  */
-export function layoutPins(
+export function layoutMap(
   hazards: readonly Hazard[],
   g: MapGeometry = DEFAULT_GEOMETRY,
   fracs: ZoneFracs = fracsFor(hazards),
-): Pin[] {
+): { pins: Pin[]; clusters: Cluster[] } {
   const b = buildingRect(g);
   const number = new Map(hazards.map((h, i) => [h.id, i + 1]));
   const pins: Pin[] = [];
+  const clusters: Cluster[] = [];
   for (const side of MAPPABLE) {
     const onSide = hazards.filter((h) => h.side === side);
     if (!onSide.length) continue;
     const along = side === "N" || side === "S" || side === "roof" ? b.w : b.h;
-    // group by band (0: 0-5 ft, 1: 5-30, 2: 30-100) and fill each band's depth with lines
     for (let band = 0; band < 3; band++) {
       const list = onSide
         .filter((h) => {
@@ -95,47 +121,33 @@ export function layoutPins(
         })
         .sort((a, c) => placeFt(a) - placeFt(c));
       if (!list.length) continue;
-      const inner = Math.max(fracs[band] * g.radius, 0) + 13;
-      const outer = Math.max(fracs[band + 1] * g.radius - 13, inner);
-      const perLine = Math.max(1, Math.floor((along + 2 * Math.min(inner, 20)) / PIN_GAP));
+      const inner = fracs[band] * g.radius + PIN_R + 2;
+      const outer = Math.max(fracs[band + 1] * g.radius - PIN_R - 2, inner);
+      const perLine = Math.max(1, Math.floor((along + 2 * Math.min(inner, 20)) / PIN_GAP) + 1);
+      const maxLines = side === "roof" ? 1 : Math.floor((outer - inner) / PIN_GAP) + 1;
+      if (list.length > perLine * maxLines) {
+        const mid = (inner + outer) / 2;
+        clusters.push({ side, band, hazardIds: list.map((h) => h.id), ...sidePoint(side, b, 0, mid, 0, 1) });
+        continue;
+      }
       const lines = Math.ceil(list.length / perLine);
       list.forEach((h, i) => {
         const line = Math.floor(i / perLine);
         const inLine = Math.min(perLine, list.length - line * perLine);
-        const pos = i % perLine;
-        const span = (inLine - 1) * PIN_GAP;
-        const t = -span / 2 + pos * PIN_GAP; // offset from the wall's midpoint
-        // depth: single line sits at the hazard's own distance; several lines share the band
+        const t = -((inLine - 1) * PIN_GAP) / 2 + (i % perLine) * PIN_GAP;
+        // one line sits at the hazard's own distance; several lines step out by a full gap
         const d =
           lines === 1
             ? Math.min(Math.max(zoneScale(placeFt(h), fracs) * g.radius, inner), outer)
-            : inner + ((outer - inner) * line) / Math.max(lines - 1, 1);
-        let x: number;
-        let y: number;
-        switch (side) {
-          case "N":
-            x = b.x + b.w / 2 + t;
-            y = b.y - d;
-            break;
-          case "S":
-            x = b.x + b.w / 2 + t;
-            y = b.y + b.h + d;
-            break;
-          case "E":
-            x = b.x + b.w + d;
-            y = b.y + b.h / 2 + t;
-            break;
-          case "W":
-            x = b.x - d;
-            y = b.y + b.h / 2 + t;
-            break;
-          default: // roof
-            x = b.x + b.w / 2 + t;
-            y = b.y + b.h / 2 + (line - (lines - 1) / 2) * PIN_GAP;
-        }
-        pins.push({ hazardId: h.id, n: number.get(h.id) ?? 0, x, y });
+            : inner + line * PIN_GAP;
+        pins.push({ hazardId: h.id, n: number.get(h.id) ?? 0, ...sidePoint(side, b, t, d, line, lines) });
       });
     }
   }
-  return pins.sort((a, b2) => a.n - b2.n);
+  return { pins: pins.sort((a, b2) => a.n - b2.n), clusters };
+}
+
+/** Pins only (hazards that fit individually); see layoutMap for clusters. */
+export function layoutPins(hazards: readonly Hazard[], g: MapGeometry = DEFAULT_GEOMETRY, fracs?: ZoneFracs): Pin[] {
+  return layoutMap(hazards, g, fracs).pins;
 }

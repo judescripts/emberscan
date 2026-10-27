@@ -4,7 +4,7 @@ import { describeDistance, formatNumber, formatRange, hazardMeasurements } from 
 import type { Hazard, Report } from "./report-types";
 import { computeScore, projectedScore, rulePenalty, scoreLabel, topFixes } from "./score";
 import { filterTasks, rescanTransition } from "./tasks";
-import { DEFAULT_GEOMETRY, fracsFor, layoutPins, zoneScale } from "./zonemap";
+import { DEFAULT_GEOMETRY, fracsFor, layoutMap, layoutPins, zoneScale } from "./zonemap";
 
 const report = sample as unknown as Report;
 
@@ -101,6 +101,24 @@ describe("zone-map scale", () => {
         expect(Math.hypot(pins[i].x - pins[j].x, pins[i].y - pins[j].y)).toBeGreaterThanOrEqual(22);
     // all close to the wall, so Zone 0 gets most of the drawing
     expect(fracsFor(many)[1]).toBeGreaterThan(0.5);
+  });
+
+  it("groups a crowded wall into one marker instead of overlapping", () => {
+    const crowded = Array.from({ length: 13 }, (_, i) => ({
+      ...report.hazards[0],
+      id: `c${i}`,
+      side: "W" as Hazard["side"],
+      // one hazard ~7 ft out narrows Zone 0 on the map, like the Constellation Rd scan
+      distance_ft: i === 0 ? { min: 4.8, max: 9.5 } : i % 2 ? { min: 0.2, max: 0.6 } : null,
+    }));
+    const { pins, clusters } = layoutMap(crowded);
+    const all = [...pins, ...clusters];
+    for (let i = 0; i < all.length; i++)
+      for (let j = i + 1; j < all.length; j++)
+        expect(Math.hypot(all[i].x - all[j].x, all[i].y - all[j].y)).toBeGreaterThanOrEqual(28);
+    const placed = pins.length + clusters.reduce((s, c) => s + c.hazardIds.length, 0);
+    expect(placed).toBe(13);
+    expect(clusters.length).toBeGreaterThan(0);
   });
 });
 
