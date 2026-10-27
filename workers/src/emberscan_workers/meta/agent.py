@@ -1,4 +1,7 @@
-"""Fix-plan agent on Muse Spark (stories D2, D3; ADR 0005).
+"""Fix-plan agent on Muse Spark Open or hosted Muse Spark (stories D2, D3, D4; ADRs 0005, 0006).
+
+Muse Spark Open (open weights, on Baseten) plans first when BASETEN_API_KEY is set; hosted
+Muse Spark is the backup. Both run the same tools, verifier and trace.
 
 The agent plans and explains; deterministic code measures and judges. It inspects the
 scan through tools, then must call `submit_plan`. A verifier written in code checks every
@@ -18,11 +21,15 @@ from typing import Any
 from ..contracts import AgentStep, Fix, Hazard, RuleResult
 from ..spend import SpendLedger, SpendLimitExceeded, token_cost
 from .client import MetaClient
+from .openweight import LABEL as OPEN_LABEL
+from .openweight import PRICE_KEY as OPEN_PRICE_KEY
+from .openweight import OpenWeightClient
 from .voice import Transcript
 
 DEFAULT_MODEL = os.environ.get("AGENT_MODEL", "muse-spark-1.3-contributor")
 MAX_TURNS = 8
 MAX_OUTPUT_TOKENS = 4000  # includes reasoning tokens
+OPEN_MAX_TOKENS = 8000  # Muse Spark Open always reasons before answering
 EST_COST_PER_TURN_TOKENS = (12_000, 2_000)  # worst-case input/output per turn for the check
 
 SYSTEM = """You are EmberScan's fix planner for wildfire defensible space.
@@ -176,6 +183,8 @@ class AgentResult:
     summary: str
     trace: list[AgentStep] = field(default_factory=list)
     dropped: list[str] = field(default_factory=list)
+    model: dict | None = None  # {model, provider, label, seconds} of the model that planned
+    fell_back: bool = False  # the model gave no valid plan; fixes are rule-based
 
 
 def _range_text(r) -> str | None:
@@ -337,44 +346,178 @@ AUDIENCE = {
 }
 
 
+@dataclass
+class _Reply:
+    calls: list[dict[str, str]]  # {"call_id", "name", "arguments"}
+    input_tokens: int = 0
+    output_tokens: int = 0
+    cached_tokens: int = 0
+
+
+class _HostedChat:
+    """Hosted Muse Spark on the Responses API; the server keeps the conversation."""
+
+    provider = "meta"
+    label = "Muse Spark (Meta Model API)"
+    est_tokens = EST_COST_PER_TURN_TOKENS
+
+    def __init__(self, client: MetaClient, model: str, instructions: str) -> None:
+        self.client, self.model, self.price_model = client, model, model
+        self.base: dict[str, Any] = {
+            "model": model,
+            "instructions": instructions,
+            "tools": TOOLS,
+            "tool_choice": "auto",
+            "reasoning": {"effort": "low"},
+            "max_output_tokens": MAX_OUTPUT_TOKENS,
+        }
+        self.previous_id: str | None = None
+
+    async def send(self, items: list[dict[str, str]]) -> _Reply:
+        inputs = [
+            {"role": "user", "content": i["text"]}
+            if i["type"] == "user"
+            else {"type": "function_call_output", "call_id": i["call_id"], "output": i["output"]}
+            for i in items
+        ]
+        body = {**self.base, "input": inputs}
+        if self.previous_id is not None:
+            body["previous_response_id"] = self.previous_id
+        resp = await self.client.create_response(body)
+        self.previous_id = resp.get("id")
+        usage = resp.get("usage") or {}
+        return _Reply(
+            [
+                {
+                    "call_id": o.get("call_id", ""),
+                    "name": o.get("name", ""),
+                    "arguments": o.get("arguments") or "{}",
+                }
+                for o in resp.get("output", [])
+                if o.get("type") == "function_call"
+            ],
+            int(usage.get("input_tokens", 0)),
+            int(usage.get("output_tokens", 0)),
+            int((usage.get("input_tokens_details") or {}).get("cached_tokens", 0)),
+        )
+
+
+class _OpenChat:
+    """Muse Spark Open on Baseten (Chat Completions); we keep the conversation. Same tools,
+    same verifier: Baseten doesn't enforce JSON schemas, so verify_plan is the only judge."""
+
+    provider = "baseten"
+    label = OPEN_LABEL
+    est_tokens = (12_000, OPEN_MAX_TOKENS)
+
+    def __init__(self, client: OpenWeightClient, instructions: str) -> None:
+        self.client, self.model, self.price_model = client, client.model, OPEN_PRICE_KEY
+        self.tools = [
+            {
+                "type": "function",
+                "function": {k: t[k] for k in ("name", "description", "parameters")},
+            }
+            for t in TOOLS
+        ]
+        self.messages: list[dict[str, Any]] = [{"role": "system", "content": instructions}]
+
+    async def send(self, items: list[dict[str, str]]) -> _Reply:
+        for i in items:
+            self.messages.append(
+                {"role": "user", "content": i["text"]}
+                if i["type"] == "user"
+                else {"role": "tool", "tool_call_id": i["call_id"], "content": i["output"]}
+            )
+        resp = await self.client.chat(
+            {
+                "messages": self.messages,
+                "tools": self.tools,
+                "tool_choice": "auto",
+                "max_tokens": OPEN_MAX_TOKENS,  # it always reasons first; leave it room
+            }
+        )
+        msg = (resp.get("choices") or [{}])[0].get("message") or {}
+        tool_calls = msg.get("tool_calls") or []
+        # Keep the assistant turn (minus its reasoning) so tool results line up with call ids.
+        self.messages.append(
+            {"role": "assistant", "content": msg.get("content") or "", "tool_calls": tool_calls}
+            if tool_calls
+            else {"role": "assistant", "content": msg.get("content") or ""}
+        )
+        usage = resp.get("usage") or {}
+        return _Reply(
+            [
+                {
+                    "call_id": c.get("id", ""),
+                    "name": (c.get("function") or {}).get("name", ""),
+                    "arguments": (c.get("function") or {}).get("arguments") or "{}",
+                }
+                for c in tool_calls
+            ],
+            int(usage.get("prompt_tokens", 0)),
+            int(usage.get("completion_tokens", 0)),
+            int((usage.get("prompt_tokens_details") or {}).get("cached_tokens") or 0),
+        )
+
+
 async def run_agent(
     client: MetaClient,
     ledger: SpendLedger,
     tools: ScanTools,
     model: str = DEFAULT_MODEL,
     site_type: str = "HOA",
+    open_client: OpenWeightClient | None = None,
 ) -> AgentResult:
-    """Plan fixes; one fresh retry if the API drops the conversation, then the rule-based plan.
-    A flaky model call never fails the scan."""
+    """Plan fixes. With `open_client`, Muse Spark Open plans first and hosted Muse Spark is the
+    backup; hosted gets one fresh retry if the API drops the conversation; the last resort is
+    the rule-based plan. A flaky model call never fails the scan."""
     instructions = SYSTEM + ("\n" + AUDIENCE[site_type] if site_type in AUDIENCE else "")
+    chats: list[Any] = [_HostedChat(client, model, instructions) for _ in (1, 2)]
+    if open_client is not None:
+        chats.insert(0, _OpenChat(open_client, instructions))
     notes: list[AgentStep] = []
-    for attempt in (1, 2):
+    for n, chat in enumerate(chats):
+        last = n == len(chats) - 1
         try:
-            result = await _run_agent_once(client, ledger, tools, model, instructions)
-            result.trace[:0] = notes
-            return result
+            result = await _run_agent_once(chat, ledger, tools)
         except SpendLimitExceeded:
-            raise
+            if chat.provider != "baseten" or last:
+                raise
+            # Spark Open bills at list price (from Baseten credits); hosted is far cheaper.
+            notes.append(
+                AgentStep(
+                    kind="note",
+                    summary=f"{chat.label} would pass the scan's spend limit; "
+                    f"trying {chats[n + 1].label}.",
+                )
+            )
+            continue
         except Exception as e:  # e.g. "referenced response not found or expired"
             notes.append(
                 AgentStep(
                     kind="note",
-                    summary=f"Model call failed ({type(e).__name__}); "
-                    + ("retrying with a fresh conversation." if attempt == 1 else "giving up."),
+                    summary=f"{chat.label} call failed ({type(e).__name__}); "
+                    + ("giving up." if last else f"trying {chats[n + 1].label}."),
                     detail={"error": str(e)[:300]},
                 )
             )
+            continue
+        if result.fell_back and chat.provider == "baseten" and not last:
+            notes += result.trace[:-1]
+            notes.append(
+                AgentStep(
+                    kind="note",
+                    summary=f"{chat.label} gave no valid plan; trying {chats[n + 1].label}.",
+                )
+            )
+            continue
+        result.trace[:0] = notes
+        return result
     notes.append(AgentStep(kind="note", summary="Using the rule-based fallback plan."))
     return AgentResult(fallback_plan(tools), "Fixes listed from the rule results.", notes)
 
 
-async def _run_agent_once(
-    client: MetaClient,
-    ledger: SpendLedger,
-    tools: ScanTools,
-    model: str,
-    instructions: str,
-) -> AgentResult:
+async def _run_agent_once(chat: Any, ledger: SpendLedger, tools: ScanTools) -> AgentResult:
     trace: list[AgentStep] = [
         AgentStep(
             kind="plan",
@@ -382,70 +525,50 @@ async def _run_agent_once(
                 "Review rule results, inspect the measured hazards behind them, use narration for "
                 "context, estimate costs, then submit a plan that cites every rule and hazard."
             ),
+            detail={"model": chat.model, "provider": chat.provider, "label": chat.label},
         )
     ]
+    model_info = {"model": chat.model, "provider": chat.provider, "label": chat.label}
     open_items = [r for r in tools.results.values() if r.status != "pass"]
     if not open_items:
         trace.append(AgentStep(kind="output", summary="No open items; no fixes needed."))
         return AgentResult([], "No fixes needed for the rules checked.", trace)
 
-    body: dict[str, Any] = {
-        "model": model,
-        "instructions": instructions,
-        "tools": TOOLS,
-        "tool_choice": "auto",
-        "reasoning": {"effort": "low"},
-        "max_output_tokens": MAX_OUTPUT_TOKENS,
-        "input": [{"role": "user", "content": "Plan the fixes for this scan."}],
-    }
-    previous_id: str | None = None
+    items: list[dict[str, str]] = [{"type": "user", "text": "Plan the fixes for this scan."}]
     retried = False
+    started = time.monotonic()
     for _ in range(MAX_TURNS):
-        ledger.check("agent", token_cost(model, *EST_COST_PER_TURN_TOKENS))
+        ledger.check("agent", token_cost(chat.price_model, *chat.est_tokens))
         t0 = time.monotonic()
-        resp = await client.create_response(
-            body
-            if previous_id is None
-            else {
-                **{k: v for k, v in body.items() if k != "input"},
-                "previous_response_id": previous_id,
-                "input": body["input"],
-            }
-        )
-        usage = resp.get("usage") or {}
+        reply = await chat.send(items)
         ledger.record(
             "agent",
-            model,
+            chat.model,
             token_cost(
-                model,
-                int(usage.get("input_tokens", 0)),
-                int(usage.get("output_tokens", 0)),
-                int((usage.get("input_tokens_details") or {}).get("cached_tokens", 0)),
+                chat.price_model, reply.input_tokens, reply.output_tokens, reply.cached_tokens
             ),
-            {
-                "input_tokens": usage.get("input_tokens", 0),
-                "output_tokens": usage.get("output_tokens", 0),
-            },
+            {"input_tokens": reply.input_tokens, "output_tokens": reply.output_tokens},
             time.monotonic() - t0,
         )
-        previous_id = resp.get("id")
-        calls = [o for o in resp.get("output", []) if o.get("type") == "function_call"]
+        calls = reply.calls
         if not calls:
             if retried:
                 break
             retried = True
-            body["input"] = [{"role": "user", "content": "Call submit_plan now with your fixes."}]
+            items = [{"type": "user", "text": "Call submit_plan now with your fixes."}]
             trace.append(
                 AgentStep(kind="note", summary="Model answered in text; asked it to submit_plan.")
             )
             continue
 
-        outputs: list[dict[str, Any]] = []
+        outputs: list[dict[str, str]] = []
         for call in calls:
             name = call.get("name", "")
             try:
                 args = json.loads(call.get("arguments") or "{}")
             except json.JSONDecodeError:
+                args = {}
+            if not isinstance(args, dict):
                 args = {}
             if name == "submit_plan":
                 fixes, dropped, blocking = verify_plan(args, tools)
@@ -469,21 +592,30 @@ async def _run_agent_once(
                     retried = True
                     outputs.append(
                         {
-                            "type": "function_call_output",
-                            "call_id": call.get("call_id"),
+                            "type": "tool",
+                            "call_id": call["call_id"],
                             "output": json.dumps(
                                 {"accepted": False, "problems": blocking, "dropped": dropped}
                             ),
                         }
                     )
                     continue
+                seconds = round(time.monotonic() - started, 1)
                 trace.append(
                     AgentStep(
                         kind="output",
-                        summary=f"{len(fixes)} fixes, {sum(f.required for f in fixes)} required.",
+                        summary=f"{len(fixes)} fixes, {sum(f.required for f in fixes)} required "
+                        f"· planned by {chat.label} in {seconds:g} s.",
+                        detail={**model_info, "seconds": seconds},
                     )
                 )
-                return AgentResult(fixes, str(args.get("summary", "")).strip(), trace, dropped)
+                return AgentResult(
+                    fixes,
+                    str(args.get("summary", "")).strip(),
+                    trace,
+                    dropped,
+                    model={**model_info, "seconds": seconds},
+                )
             try:
                 result = tools.call(name, args)
             except Exception as e:  # unknown tool or bad args: tell the model, don't crash
@@ -497,20 +629,18 @@ async def _run_agent_once(
                 )
             )
             outputs.append(
-                {
-                    "type": "function_call_output",
-                    "call_id": call.get("call_id"),
-                    "output": json.dumps(result),
-                }
+                {"type": "tool", "call_id": call["call_id"], "output": json.dumps(result)}
             )
-        body["input"] = outputs
+        items = outputs
 
     trace.append(
         AgentStep(
             kind="note", summary="Agent did not submit a valid plan; using rule-based fallback."
         )
     )
-    return AgentResult(fallback_plan(tools), "Fixes listed from the rule results.", trace)
+    return AgentResult(
+        fallback_plan(tools), "Fixes listed from the rule results.", trace, fell_back=True
+    )
 
 
 def _args_text(args: dict) -> str:

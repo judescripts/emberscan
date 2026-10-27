@@ -10,6 +10,7 @@ import pytest
 from emberscan_workers.contracts import Report
 from emberscan_workers.meta import MetaClient
 from emberscan_workers.meta.agent import ScanTools, run_agent, verify_plan
+from emberscan_workers.meta.openweight import OpenWeightClient
 from emberscan_workers.meta.voice import Transcript, Turn
 from emberscan_workers.spend import SpendLedger
 
@@ -151,6 +152,91 @@ def test_agent_falls_back_when_model_never_submits(tools: ScanTools) -> None:
     res = asyncio.run(run())
     assert {r for f in res.fixes for r in f.rule_ids} >= {"Z1-04"}
     assert res.trace[-1].kind == "note"
+
+
+def _chat(*calls: tuple[str, dict, str]) -> dict:
+    return {
+        "choices": [
+            {
+                "message": {
+                    "role": "assistant",
+                    "content": "",
+                    "reasoning_content": "thinking...",
+                    "tool_calls": [
+                        {
+                            "id": cid,
+                            "type": "function",
+                            "function": {"name": name, "arguments": json.dumps(args)},
+                        }
+                        for name, args, cid in calls
+                    ],
+                }
+            }
+        ],
+        "usage": {"prompt_tokens": 900, "completion_tokens": 300},
+    }
+
+
+def test_open_weight_plans_with_same_tools_and_verifier(tools: ScanTools) -> None:
+    handler, calls = _scripted(
+        [
+            _chat(("get_rule_results", {"status": "fail"}, "a1")),
+            _chat(("submit_plan", {"fixes": [fix()], "summary": "Move the firewood."}, "a2")),
+        ]
+    )
+    ledger = SpendLedger(run_id="t", limit_usd=1.0)
+
+    async def run():
+        async with OpenWeightClient(api_key="k", transport=httpx.MockTransport(handler)) as o:
+            return await run_agent(None, ledger, tools, open_client=o)
+
+    res = asyncio.run(run())
+    assert [f.title for f in res.fixes] == ["Move firewood"]
+    assert res.model and res.model["provider"] == "baseten"
+    assert calls[0]["model"] == "meta-models/muse-spark-open-1026"
+    assert calls[0]["tools"][0]["function"]["name"] == "get_rule_results"
+    # Turn 2 replays the conversation: the tool result answers call a1; reasoning is not resent.
+    tool_msg = calls[1]["messages"][-1]
+    assert tool_msg["role"] == "tool" and tool_msg["tool_call_id"] == "a1"
+    assert all("reasoning_content" not in m for m in calls[1]["messages"])
+    assert ledger.records[0].model == "meta-models/muse-spark-open-1026"
+
+
+def test_open_weight_failure_falls_back_to_hosted(tools: ScanTools) -> None:
+    def down(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(503, json={"error": "overloaded"})
+
+    handler, _ = _scripted([_resp(1, _fc("submit_plan", {"fixes": [fix()], "summary": "s"}, "c1"))])
+    ledger = SpendLedger(run_id="t", limit_usd=1.0)
+
+    async def run():
+        async with (
+            OpenWeightClient(api_key="k", transport=httpx.MockTransport(down)) as o,
+            MetaClient(api_key="k", transport=httpx.MockTransport(handler)) as c,
+        ):
+            return await run_agent(c, ledger, tools, open_client=o)
+
+    res = asyncio.run(run())
+    assert res.model and res.model["provider"] == "meta"
+    assert "Muse Spark Open" in res.trace[0].summary and res.trace[0].kind == "note"
+
+
+def test_open_weight_over_run_limit_uses_hosted(tools: ScanTools) -> None:
+    def never(request: httpx.Request) -> httpx.Response:
+        raise AssertionError("Spark Open must not be called over the limit")
+
+    handler, _ = _scripted([_resp(1, _fc("submit_plan", {"fixes": [fix()], "summary": "s"}, "c1"))])
+    ledger = SpendLedger(run_id="t", limit_usd=0.01)  # below one Spark Open turn, above hosted
+
+    async def run():
+        async with (
+            OpenWeightClient(api_key="k", transport=httpx.MockTransport(never)) as o,
+            MetaClient(api_key="k", transport=httpx.MockTransport(handler)) as c,
+        ):
+            return await run_agent(c, ledger, tools, open_client=o)
+
+    res = asyncio.run(run())
+    assert res.model and res.model["provider"] == "meta" and res.fixes
 
 
 def test_api_failure_retries_then_falls_back(monkeypatch, tools: ScanTools) -> None:

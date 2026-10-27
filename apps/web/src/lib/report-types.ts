@@ -70,6 +70,17 @@ export interface Fix {
   cost_band: "free" | "$" | "$$" | "$$$";
   owner: "HOA" | "Owner" | "Unclear";
   priority: number;
+  /** Muse Image "after" picture of the fix: an illustration, never evidence. */
+  illustration?: Illustration | null;
+}
+
+export interface Illustration {
+  before_path: string;
+  after_path: string;
+  hazard_id: string;
+  frame_index: number;
+  model: string;
+  prompt: string;
 }
 
 export interface AgentStep {
@@ -115,8 +126,17 @@ export interface Report {
   score: ScoreBlock;
   fixes: Fix[];
   agent_trace: AgentStep[];
+  /** The model that planned the fixes; null/absent = rule-based fallback (or an older report). */
+  agent_model?: AgentModel | null;
   cost: Record<string, unknown>;
   disclaimer: string;
+}
+
+export interface AgentModel {
+  model: string;
+  provider: "baseten" | "meta";
+  label: string;
+  seconds?: number;
 }
 
 /** Worker GET /scans/{id} response (docs/contracts/README.md). */

@@ -23,11 +23,15 @@ export function AgentTrace({ report }: { report: Report }) {
   const steps = report.agent_trace ?? [];
   const toolCalls = steps.filter((s) => s.kind === "tool_call").length;
   const cost = report.cost as { spent_usd?: number; calls?: number };
+  const planner = report.agent_model;
+  const open = planner?.provider === "baseten";
   return (
     <details id="how" open data-report-section className="group scroll-mt-28 overflow-hidden rounded-2xl bg-trace text-trace-fg">
       <summary className="flex cursor-pointer list-none items-start justify-between gap-3 border-b border-trace-line px-4 py-3 sm:px-5 [&::-webkit-details-marker]:hidden">
         <div>
-        <p className="font-mono text-[11px] tracking-widest text-trace-muted uppercase">Agent trace · Muse Spark</p>
+        <p className="font-mono text-[11px] tracking-widest text-trace-muted uppercase">
+          Agent trace · {open ? "Muse Spark Open" : planner ? "Muse Spark" : "Rule-based plan"}
+        </p>
         <h2 id="agent-trace" className="text-lg font-bold">
           How EmberScan got here
         </h2>
@@ -35,6 +39,15 @@ export function AgentTrace({ report }: { report: Report }) {
           The agent plans, calls tools over the measured hazards and rule results, then a checker verifies every claim. It can explain
           and prioritize results but can&apos;t change them.
         </p>
+        {planner && (
+          <p className="mt-2 inline-flex flex-wrap items-center gap-x-2 gap-y-1 rounded-lg bg-white/10 px-2.5 py-1 text-xs">
+            <span className="font-semibold">
+              Planned by {open ? "Muse Spark Open, Meta's open-weight model, on Baseten" : "Muse Spark on the Meta Model API"}
+            </span>
+            {typeof planner.seconds === "number" && <span className="text-trace-muted">in {Math.round(planner.seconds)} s</span>}
+            <span className="font-mono text-[11px] text-trace-muted">{planner.model}</span>
+          </p>
+        )}
         </div>
         <span aria-hidden className="mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white/10 transition-transform group-open:rotate-180">
           <svg viewBox="0 0 16 16" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2}>

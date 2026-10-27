@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { Suspense } from "react";
 import { AgentTrace } from "@/components/report/agent-trace";
+import { AfterPicture } from "@/components/report/after-picture";
 import { EvidenceThumbs } from "@/components/report/evidence-thumbs";
 import { ReportNav } from "@/components/report/report-nav";
 import { ReportSection } from "@/components/report/section";
@@ -163,7 +164,11 @@ async function ReportView({ params }: { params: PageProps<"/report/[scanId]">["p
                     <div className="mt-1.5">
                       <FixTags fix={f} owner={taskByRule.get(taskRuleId(f))?.responsibility} communityType={community?.type} />
                     </div>
-                    <EvidenceThumbs report={report} hazardIds={f.hazard_ids} imageBase={imageBase} />
+                    {f.illustration ? (
+                      <AfterPicture fix={f} report={report} imageBase={imageBase} />
+                    ) : (
+                      <EvidenceThumbs report={report} hazardIds={f.hazard_ids} imageBase={imageBase} />
+                    )}
                     <a href={`#fix-${f.id}`} className="mt-2 inline-block text-xs font-semibold text-brand underline underline-offset-2">
                       Track this fix
                     </a>
@@ -202,6 +207,7 @@ async function ReportView({ params }: { params: PageProps<"/report/[scanId]">["p
                     </a>
                   ))}
                 </div>
+                <AfterPicture fix={f} report={report} imageBase={imageBase} />
                 <EvidenceThumbs report={report} hazardIds={f.hazard_ids} imageBase={imageBase} max={6} />
                 <div className="mt-3">
                   <FixTracker
@@ -234,6 +240,10 @@ async function ReportView({ params }: { params: PageProps<"/report/[scanId]">["p
         <p className="mt-2 text-xs text-muted">{pack.disclaimer}</p>
         <p className="mt-2 text-xs text-muted">
           Distances come from the video and are shown as ranges. Rules are checked by a fixed, tested rules engine; the AI agent explains and prioritizes but cannot change a result.
+        </p>
+        <p className="mt-2 text-xs text-muted">
+          Built with Meta AI: SAM 3.1, Muse Spark, Muse Voice Transcribe and Muse Image.{" "}
+          <span className="font-semibold text-ink">Built with Muse Spark Open.</span>
         </p>
       </footer>
     </article>

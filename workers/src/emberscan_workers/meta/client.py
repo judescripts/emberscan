@@ -75,6 +75,12 @@ class MetaClient:
         self._raise_for(resp)
         return resp.json()
 
+    async def edit_image(self, body: dict[str, Any]) -> dict[str, Any]:
+        """POST /images/edits (Muse Image, JSON body with data-URL images)."""
+        resp = await self._http.post("/images/edits", json=body)
+        self._raise_for(resp)
+        return resp.json()
+
     async def transcribe_wav(self, wav: Path, request: dict[str, Any]) -> dict[str, Any]:
         """POST /asr/transcribe (multipart: JSON `request` part + WAV `audio` part)."""
         with wav.open("rb") as f:

@@ -77,6 +77,17 @@ class RuleResult(BaseModel):
     citation_label: str
 
 
+class Illustration(BaseModel):
+    """An AI-edited picture of what a fix would look like. Not a measurement."""
+
+    before_path: str  # the clean video frame, relative to the scan folder
+    after_path: str  # the same frame edited by Muse Image
+    hazard_id: str
+    frame_index: int
+    model: str
+    prompt: str
+
+
 class Fix(BaseModel):
     id: str
     title: str
@@ -88,6 +99,7 @@ class Fix(BaseModel):
     cost_band: Literal["free", "$", "$$", "$$$"]
     owner: Literal["HOA", "Owner", "Unclear"]
     priority: int
+    illustration: Illustration | None = None  # Muse Image "after" picture; never evidence
 
 
 class AgentStep(BaseModel):
@@ -125,6 +137,8 @@ class Report(BaseModel):
     score: ScoreBlock
     fixes: list[Fix]
     agent_trace: list[AgentStep] = Field(default_factory=list)
+    # {model, provider ("baseten" | "meta"), label, seconds}; None = rule-based fallback plan
+    agent_model: dict | None = None
     cost: dict = Field(default_factory=dict)  # spend ledger summary
     disclaimer: str = (
         "EmberScan flags likely wildfire hazards and suggests fixes based on published "

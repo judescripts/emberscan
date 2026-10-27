@@ -10,6 +10,10 @@ All work happens during the hackathon (Oct 26 – Nov 4, 2026).
 - App skeleton: Next.js web app (`apps/web`), Python workers package (`workers`) with a validated rule-pack loader and 7 tests, GitHub Actions CI (lint, typecheck, build, tests), third-party license list.
 - Confirmed Meta Model API access: all planned models listed for our key; first Muse Spark call succeeded (note: `max_output_tokens` includes reasoning tokens).
 
+## Day 2 — Tue Oct 27
+- Muse Spark Open (D4): the fix-plan agent now runs on Meta's open-weight model on Baseten (`meta-models/muse-spark-open-1026`) with the same tools, verifier and trace, and falls back to hosted Muse Spark if it fails, gives no valid plan, or would pass the scan's spend limit. The report shows which model planned. Benchmark on the real Constellation scan: 3 of 3 valid plans on each model, median 64 s (open) vs 68 s (hosted), about $0.08 vs $0.002 per plan (`docs/benchmarks.md`). "Built with Muse Spark Open" in the report and README.
+- Muse Image after pictures (E8): the top 3 fixes get the clean video frame of their closest measured hazard edited to show only that fix ("remove the dry leaves along the wall; keep everything else identical"), shown as Now / After the fix next to the fix and labelled as an AI illustration, never evidence. $0.01 each; a failed picture never fails the scan.
+
 ## Day 1 (continued)
 - Spend tracking (F3, part 1): Meta price table, cost functions for tokens, SAM frames (50-frame minimum), audio seconds and images, and a per-run ledger that blocks a call before it would exceed `SPEND_LIMIT_USD_PER_RUN`. 10 tests.
 - `docs/how-measurement-works.md`: how the printed marker, homography and uncertainty ranges turn video into feet.

@@ -1,6 +1,6 @@
 # ADR 0006: Open-weight serving (Muse Spark Open)
 
-**Status:** Proposed (2026-10-26). Depends on partner credit approval and the Baseten model ID.
+**Status:** Accepted (2026-10-27). Baseten credits and the hackathon model ID `meta-models/muse-spark-open-1026` arrived Oct 26; tool calling verified live. The whole fix-plan agent (not only the explanation step) runs on Muse Spark Open, with hosted Muse Spark as the fallback. Results: `docs/benchmarks.md`.
 
 ## Context
 The Best Build on Meta Open-Weight Models prize ($10K) requires a core path on an open-weight model, verified by the infra partner. Options from the model notes (Oct 26): Muse Spark Open on Baseten (hackathon ID per handoff `meta-models/muse-spark-open-1026`, **VERIFY**: public pages show `meta-models/muse-spark-open`), Modal (self-deployed, dedicated GPUs), Fireworks (Glimmer serverless ended Sept 25; dedicated only). Baseten accepts a JSON schema for Spark Open but **doesn't enforce it**. Muse Spark Open's license requires the credit "Built with Muse Spark Open".

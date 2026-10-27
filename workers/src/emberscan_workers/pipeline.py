@@ -18,12 +18,14 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from .after_image import illustrate_fixes
 from .contracts import BBox, Evidence, Hazard, Range, Report
 from .eave import EaveEstimate, estimate_eave
 from .hazards import BY_CLASS, CORE, Concept
 from .media import VideoInfo, extract_audio, extract_frames, join_clips, normalize, probe
 from .meta import MetaClient
 from .meta.agent import ScanTools, run_agent
+from .meta.openweight import OpenWeightClient, open_weight_enabled
 from .meta.sam import SegmentationResult, Track, segment_video
 from .meta.voice import Transcript, transcribe
 from .rules import evaluate, load_pack
@@ -397,18 +399,25 @@ async def run_scan(
             f"{n.reviews} need review · {n.passes} pass",
         )
 
-        await p.set("agent", "running", "Muse Spark is planning fixes")
-        agent = await run_agent(
-            client,
-            ledger,
-            ScanTools(hazards, engine.results, transcript, fps),
-            site_type=job.site_type,
-        )
+        scan_tools = ScanTools(hazards, engine.results, transcript, fps)
+        if open_weight_enabled():
+            await p.set("agent", "running", "Muse Spark Open is planning fixes")
+            async with OpenWeightClient() as open_client:
+                agent = await run_agent(
+                    client, ledger, scan_tools, site_type=job.site_type, open_client=open_client
+                )
+        else:
+            await p.set("agent", "running", "Muse Spark is planning fixes")
+            agent = await run_agent(client, ledger, scan_tools, site_type=job.site_type)
+        await p.set("agent", "running", "Muse Image is drawing after pictures of the top fixes")
+        pictures = await illustrate_fixes(client, ledger, agent.fixes, hazards, job.dir)
         await p.set(
             "agent",
             "done",
             f"{len(agent.fixes)} fixes · "
-            f"{sum(1 for s in agent.trace if s.kind == 'tool_call')} tool calls",
+            f"{sum(1 for s in agent.trace if s.kind == 'tool_call')} tool calls"
+            + (f" · {agent.model['label']}" if agent.model else " · rule-based plan")
+            + (f" · {pictures} after pictures (Muse Image)" if pictures else ""),
         )
 
         await p.set("report", "running")
@@ -436,6 +445,7 @@ async def run_scan(
             score=engine.score,
             fixes=agent.fixes,
             agent_trace=agent.trace,
+            agent_model=agent.model,
             cost=ledger.summary(),
         )
         (job.dir / "report.json").write_text(report.model_dump_json(indent=2), encoding="utf-8")
