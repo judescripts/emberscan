@@ -127,8 +127,12 @@ export function ZoneMap({ hazards: all, results, buildingLabel }: { hazards: Haz
             <title>{`${c.hazardIds.length} hazards here: tap for the list`}</title>
             <circle cx={c.x} cy={c.y} r={PIN_R + 9} fill={worst(c.hazardIds)} stroke="var(--surface)" strokeWidth={3} />
             <circle cx={c.x} cy={c.y} r={PIN_R + 13} fill="none" stroke={worst(c.hazardIds)} strokeWidth={1.5} opacity={0.5} />
-            <text x={c.x} y={c.y + 5.5} textAnchor="middle" fontSize={16} fontWeight={800} fill="var(--surface)">
+            <text x={c.x} y={c.y + 1} textAnchor="middle" fontSize={14} fontWeight={800} fill="var(--surface)">
               {c.hazardIds.length}
+            </text>
+            {/* says it's a group, so the count isn't read as evidence number N */}
+            <text x={c.x} y={c.y + 11} textAnchor="middle" fontSize={7.5} fontWeight={700} fill="var(--surface)">
+              ITEMS
             </text>
           </a>
         ))}
@@ -146,7 +150,7 @@ export function ZoneMap({ hazards: all, results, buildingLabel }: { hazards: Haz
       </ul>
       <p className="text-center text-xs text-muted">
         Sketch, not to scale: zones are stretched so the closest ones are readable. Use Zoom in for a closer look.
-        {clusters.length > 0 && " Big markers group a crowded wall: tap one for its list."} Each wall is listed below.
+        {clusters.length > 0 && " A big marker marked ITEMS groups a crowded wall: tap it for that wall's list."} Each wall is listed below.
         {okCount > 0 && ` ${okCount} more seen with no issue (listed under Evidence).`}
       </p>
       {(["N", "E", "S", "W"] as const).map((side) => {
@@ -154,7 +158,7 @@ export function ZoneMap({ hazards: all, results, buildingLabel }: { hazards: Haz
         if (!onSide.length) return null;
         const measured = onSide.filter((h) => h.distance_ft);
         return (
-          <div key={side} id={`wall-${side}`} className="mt-2 scroll-mt-28 border-t border-line pt-3">
+          <div key={side} id={`wall-${side}`} className="target-ring mt-2 scroll-mt-28 rounded-xl border-t border-line pt-3">
             <h3 className="mb-1 text-sm font-semibold text-ink">
               {sideWords(side)} · {onSide.length} to look at
             </h3>

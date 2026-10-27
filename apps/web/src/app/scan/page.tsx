@@ -37,6 +37,16 @@ export default function NewScanPage(props: PageProps<"/scan">) {
                 </li>
               ))}
             </ol>
+            <div className="mt-4 rounded-xl border border-line bg-soft p-3 text-sm">
+              <p className="font-semibold text-ink">Your privacy, built into the pipeline</p>
+              <ul className="mt-1 flex list-disc flex-col gap-0.5 pl-5 text-muted">
+                <li>People and license plates are found by SAM 3.1 and blurred in every kept frame.</li>
+                <li>No blur check, no scan: it fails closed instead of keeping unblurred frames.</li>
+                <li>The raw video and audio are deleted when the scan ends, even if it fails.</li>
+                <li>After pictures are drawn from blurred frames and never add people.</li>
+                <li>The report says what was blurred, under How it was made.</li>
+              </ul>
+            </div>
           </Card>
         </div>
       </div>

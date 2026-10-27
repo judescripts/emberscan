@@ -86,6 +86,8 @@ class Illustration(BaseModel):
     frame_index: int
     model: str
     prompt: str
+    checked: bool = False  # Muse Spark compared the pair and saw the fix
+    check_reason: str = ""
 
 
 class Fix(BaseModel):

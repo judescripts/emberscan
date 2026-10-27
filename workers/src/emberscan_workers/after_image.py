@@ -4,13 +4,16 @@ For each of the first few fixes, take the clean video frame behind its closest m
 and ask Muse Image to edit only what the fix changes ("remove the dry leaves along the wall;
 keep everything else identical"). The result is an illustration, never evidence: the report
 labels it as AI-made, it is never measured, and it is shown next to the fix, not the findings.
-A failed or skipped picture never fails the scan.
+Muse Spark then compares each before/after pair and drops pictures where the fix isn't visible
+(an inspection fix, or a hazard at the edge of the frame), so "After the fix" never shows the
+same picture twice. A failed or skipped picture never fails the scan.
 """
 
 from __future__ import annotations
 
 import asyncio
 import base64
+import json
 import logging
 import os
 import time
@@ -20,13 +23,19 @@ import cv2
 import numpy as np
 
 from .contracts import Fix, Hazard, Illustration
+from .eave import _data_url, _output_text
 from .meta.client import MetaClient
-from .spend import SpendLedger, SpendLimitExceeded, image_cost
+from .spend import SpendLedger, SpendLimitExceeded, image_cost, token_cost
 
 log = logging.getLogger(__name__)
 
 MODEL = "muse-image-1.0"
 MAX_PICTURES = int(os.environ.get("AFTER_IMAGES", "3"))  # 0 turns the feature off
+CHECK_MODEL = os.environ.get("AGENT_MODEL", "muse-spark-1.3-contributor")
+CHECK_TOKENS = (4_000, 800)  # worst case per check, for the spend check
+# A hazard box this share of the frame or more counts as clearly in view. A smaller one (a sliver
+# at the edge) loses to a bigger one, even if that one is a little farther from the wall.
+VISIBLE_AREA = 0.04
 
 # What each fix changes in the picture, by hazard class. Classes not listed get no picture.
 EDITS = {
@@ -49,6 +58,15 @@ EDITS = {
     "roof_debris": "clear the leaves and debris off the roof",
 }
 
+CHECK_PROMPT = (
+    "The first photo is a real video frame. The second is the same frame edited by an image "
+    "model to show this change: {edits}. It illustrates this fix from a wildfire-safety plan: "
+    '"{title}". Answer true only if the change is visible (a small change counts) AND the '
+    "second photo is a fair picture of what this fix would do (an inspection, check or trim "
+    "fix is not fairly shown by removing the plants). Reply with JSON only: "
+    '{{"visible": true or false, "reason": "<one short sentence>"}}'
+)
+
 PROMPT = (
     "Edit this exact photo to show one wildfire-safety fix: {edits}. Keep everything else "
     "identical: the same building, wall, windows, other plants, ground, lighting, camera angle "
@@ -57,20 +75,79 @@ PROMPT = (
 )
 
 
-def pick_hazard(fix: Fix, hazards: dict[str, Hazard]) -> Hazard | None:
-    """The fix's hazard to picture: the closest measured one with a frame, else any with one."""
+def pick_hazard(
+    fix: Fix, hazards: dict[str, Hazard], frame_area: float | None = None
+) -> Hazard | None:
+    """The fix's hazard to picture: one clearly in view, then the closest measured one."""
     own = [hazards[h] for h in fix.hazard_ids if h in hazards and hazards[h].evidence]
     own = [h for h in own if h.cls in EDITS]
     if not own:
         return None
-    measured = [h for h in own if h.distance_ft is not None]
-    return min(measured, key=lambda h: h.distance_ft.min) if measured else own[0]
+
+    def in_view(h: Hazard) -> float:
+        if not frame_area:
+            return 0.0
+        b = h.evidence[0].bbox
+        return min((b.right - b.left) * (b.bottom - b.top) / frame_area, VISIBLE_AREA)
+
+    far = float("inf")
+    return min(own, key=lambda h: (-in_view(h), h.distance_ft.min if h.distance_ft else far))
+
+
+def edit_list(fix: Fix, hazards: dict[str, Hazard]) -> str:
+    classes = dict.fromkeys(hazards[h].cls for h in fix.hazard_ids if h in hazards)
+    return "; ".join(EDITS[c] for c in classes if c in EDITS)
 
 
 def edit_prompt(fix: Fix, hazards: dict[str, Hazard]) -> str:
-    classes = dict.fromkeys(hazards[h].cls for h in fix.hazard_ids if h in hazards)
-    edits = [EDITS[c] for c in classes if c in EDITS]
-    return PROMPT.format(edits="; ".join(edits))
+    return PROMPT.format(edits=edit_list(fix, hazards))
+
+
+async def check_edit(
+    client: MetaClient, ledger: SpendLedger, before: Path, after: Path, edits: str, title: str
+) -> tuple[bool | None, str]:
+    """Muse Spark compares the pair: (visible, reason), or (None, "") when it couldn't say."""
+    try:
+        ledger.check("after_check", token_cost(CHECK_MODEL, *CHECK_TOKENS))
+        t0 = time.monotonic()
+        resp = await client.create_response(
+            {
+                "model": CHECK_MODEL,
+                "input": [
+                    {
+                        "role": "user",
+                        "content": [
+                            {
+                                "type": "input_text",
+                                "text": CHECK_PROMPT.format(edits=edits, title=title),
+                            },
+                            {"type": "input_image", "image_url": _data_url(before)},
+                            {"type": "input_image", "image_url": _data_url(after)},
+                        ],
+                    }
+                ],
+                "reasoning": {"effort": "low"},
+                "max_output_tokens": 800,
+            }
+        )
+    except Exception:  # an unchecked picture is kept, not dropped
+        log.exception("after picture check failed")
+        return None, ""
+    usage = resp.get("usage") or {}
+    tokens = (int(usage.get("input_tokens", 0)), int(usage.get("output_tokens", 0)))
+    ledger.record(
+        "after_check",
+        CHECK_MODEL,
+        token_cost(CHECK_MODEL, *tokens),
+        {"input_tokens": tokens[0], "output_tokens": tokens[1]},
+        time.monotonic() - t0,
+    )
+    text = _output_text(resp)
+    try:
+        d = json.loads(text[text.index("{") : text.rindex("}") + 1])
+        return bool(d["visible"]), str(d.get("reason", ""))[:200]
+    except (ValueError, KeyError, TypeError):
+        return None, ""
 
 
 def clean_frame(scan_dir: Path, frame_index: int) -> Path:
@@ -79,9 +156,14 @@ def clean_frame(scan_dir: Path, frame_index: int) -> Path:
 
 
 async def _one(
-    client: MetaClient, ledger: SpendLedger, fix: Fix, hazards: dict[str, Hazard], scan_dir: Path
+    client: MetaClient,
+    ledger: SpendLedger,
+    fix: Fix,
+    hazards: dict[str, Hazard],
+    scan_dir: Path,
+    frame_area: float | None = None,
 ) -> Illustration | None:
-    hazard = pick_hazard(fix, hazards)
+    hazard = pick_hazard(fix, hazards, frame_area)
     if hazard is None:
         return None
     frame = hazard.evidence[0].frame_index
@@ -131,6 +213,19 @@ async def _one(
     out.mkdir(exist_ok=True)
     cv2.imwrite(str(out / f"{fix.id}-before.jpg"), before, [cv2.IMWRITE_JPEG_QUALITY, 85])
     cv2.imwrite(str(out / f"{fix.id}.jpg"), after, [cv2.IMWRITE_JPEG_QUALITY, 85])
+    visible, reason = await check_edit(
+        client,
+        ledger,
+        out / f"{fix.id}-before.jpg",
+        out / f"{fix.id}.jpg",
+        edit_list(fix, hazards),
+        fix.title,
+    )
+    if visible is False:
+        log.info("after picture for %s dropped: %s", fix.id, reason)
+        for name in (f"{fix.id}-before.jpg", f"{fix.id}.jpg"):
+            (out / name).unlink(missing_ok=True)
+        return None
     return Illustration(
         before_path=f"after/{fix.id}-before.jpg",
         after_path=f"after/{fix.id}.jpg",
@@ -138,6 +233,8 @@ async def _one(
         frame_index=frame,
         model=MODEL,
         prompt=prompt,
+        checked=visible is True,
+        check_reason=reason,
     )
 
 
@@ -152,8 +249,13 @@ async def illustrate_fixes(
     """Attach an after picture to up to `limit` fixes, in priority order (in place).
     Returns how many were made."""
     by_id = {h.id: h for h in hazards}
+    first = next(iter(sorted((scan_dir / "frames").glob("frame_*.jpg"))), None)
+    img = cv2.imread(str(first)) if first else None
+    area = float(img.shape[0] * img.shape[1]) if img is not None else None
     chosen = [f for f in fixes if pick_hazard(f, by_id) is not None][: max(limit, 0)]
-    pictures = await asyncio.gather(*(_one(client, ledger, f, by_id, scan_dir) for f in chosen))
+    pictures = await asyncio.gather(
+        *(_one(client, ledger, f, by_id, scan_dir, area) for f in chosen)
+    )
     for fix, pic in zip(chosen, pictures, strict=True):
         fix.illustration = pic
     return sum(p is not None for p in pictures)

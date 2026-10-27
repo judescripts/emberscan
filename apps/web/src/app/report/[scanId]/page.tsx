@@ -195,17 +195,17 @@ async function ReportView({ params }: { params: PageProps<"/report/[scanId]">["p
       </ReportSection>
 
       {/* 5. Evidence */}
-      <ReportSection id="evidence" kicker="Tracked across the video" title={`Evidence (${report.hazards.length})`} card={false}>
+      <ReportSection id="evidence" kicker="Tracked across the video" title={`Evidence (${report.hazards.length})`}>
         <EvidenceList report={report} imageBase={imageBase} />
       </ReportSection>
 
       {/* 6. All fixes, with tracking */}
-      <ReportSection id="all-fixes" kicker="Fix plan" title={`All fixes (${allFixes.length})`} card={false}>
+      <ReportSection id="all-fixes" kicker="Fix plan" title={`All fixes (${allFixes.length})`}>
         <ol className="flex flex-col gap-3">
           {allFixes.map((f) => {
             const t = taskByRule.get(taskRuleId(f));
             return (
-              <li key={f.id} id={`fix-${f.id}`} className="target-ring scroll-mt-28 rounded-2xl border border-line bg-surface p-4">
+              <li key={f.id} id={`fix-${f.id}`} className="target-ring scroll-mt-28 rounded-xl border border-line p-4">
                 <h3 className="font-bold text-ink">{f.title}</h3>
                 <p className="mt-0.5 text-sm text-muted">{f.why}</p>
                 <div className="mt-2 flex flex-wrap items-center gap-2">

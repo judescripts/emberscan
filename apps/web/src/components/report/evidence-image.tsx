@@ -35,6 +35,7 @@ export function EvidenceImage({
       type="button"
       className="group relative block w-full overflow-hidden rounded-xl bg-soft text-left"
       onClick={() => setOpen((o) => !o)}
+      onMouseLeave={() => setOpen(false)} // a click on desktop shouldn't pin it open after the mouse leaves
       aria-expanded={hasWhy ? open : undefined}
       aria-label={hasWhy ? `${alt}. ${open ? "Hide" : "Show"} why it was flagged` : alt}
       disabled={!hasWhy}

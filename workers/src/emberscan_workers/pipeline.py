@@ -454,8 +454,9 @@ async def run_scan(
             agent.trace.append(
                 AgentStep(
                     kind="illustrate",
-                    summary=f"Muse Image drew {pictures} after picture(s) from blurred frames, "
-                    "labelled as AI illustrations, not evidence.",
+                    summary=f"Muse Image drew {pictures} after picture(s) from blurred frames; "
+                    "Muse Spark checked each shows the fix and dropped any that didn't. "
+                    "Labelled as AI illustrations, not evidence.",
                     detail={
                         "fixes": [f.id for f in agent.fixes if f.illustration],
                         "model": "muse-image-1.0",
