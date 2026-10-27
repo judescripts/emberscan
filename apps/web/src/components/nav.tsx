@@ -18,7 +18,7 @@ export function BottomTabs() {
   return (
     <nav
       aria-label="Main"
-      className="fixed inset-x-0 bottom-0 z-40 border-t border-black/20 bg-nav pb-[env(safe-area-inset-bottom)] lg:hidden"
+      className="fixed inset-x-0 bottom-0 z-40 border-t border-black/20 bg-nav pb-[env(safe-area-inset-bottom)] shadow-[0_100vh_0_100vh_var(--nav)] lg:hidden"
     >
       <ul className="grid grid-cols-4">
         {TABS.map(({ href, label, Icon, match }) => {

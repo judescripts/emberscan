@@ -101,6 +101,8 @@
 html {
   scroll-behavior: smooth;
   scroll-padding-top: 5rem;
+  /* no rubber-band bounce: it opened a gap under the fixed bottom tab bar on iPhone */
+  overscroll-behavior-y: none;
 }
 
 body {
