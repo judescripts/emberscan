@@ -174,6 +174,15 @@ export function ScanForm({
         <p id="video-help" className="mt-1 text-xs text-muted">
           One loop of all four sides, about 1–3 minutes. Several clips are fine: they&apos;re joined in name order. {clipSummary(files)}
         </p>
+        {files.length === 0 && (
+          <div className="mt-3 rounded-xl border border-dashed border-line px-3 py-2.5 text-xs text-muted">
+            <p className="font-semibold text-ink">Which side is each clip? (N / E / S / W)</p>
+            <p className="mt-0.5">
+              Once you pick your clips, each one shows up here with N, E, S and W buttons. Tagging sides puts hazards on the zone
+              map. Or just say “north side…” while filming.
+            </p>
+          </div>
+        )}
         {files.length > 0 && (
           <fieldset className="mt-3">
             <legend className="text-sm font-semibold text-ink">
