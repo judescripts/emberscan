@@ -12,6 +12,7 @@ from emberscan_workers.rules import (
     VEGETATION_ANY,
     RulePack,
     compute_score,
+    covered_distance,
     evaluate,
     load_pack,
     score_label,
@@ -578,3 +579,41 @@ def test_determinism(us_ca: RulePack) -> None:
     shuffled = hz[:]
     random.Random(7).shuffle(shuffled)
     assert evaluate(shuffled, us_ca, **kw).model_dump_json() == first
+
+
+# ----------------------------------------------------------------------------- coverage
+
+ZONE2_FIREWOOD = P(
+    R("Z2-01", ["woodpile"], {"type": "absent_within", "ft": 100, "min_ft": 30}, zone="Z2")
+)
+
+
+def test_area_beyond_the_video_is_not_covered_and_not_scored() -> None:
+    res = evaluate([], ZONE2_FIREWOOD, eave_depth_ft=None, covered_ft=10)
+    r = res.results[0]
+    assert (r.status, r.coverage) == ("needs-review", "none")
+    assert "Not covered by this video" in r.reason and "30–100 ft" in r.reason
+    assert res.score.score == 100 and res.score.reviews == 0 and res.score.not_covered == 1
+
+
+def test_hazard_measured_in_the_far_zone_is_still_judged() -> None:
+    wood = H("h-wood", "woodpile", distance_ft=rng(40, 45))
+    r = one([wood], ZONE2_FIREWOOD, covered_ft=covered_distance([wood]))
+    assert (r.status, r.coverage) == ("fail", "full")
+
+
+def test_partly_covered_pass_says_how_far_the_video_reached() -> None:
+    r = one([], FIREWOOD_30, covered_ft=10)
+    assert (r.status, r.coverage) == ("pass", "partial")
+    assert (
+        r.reason == "No woodpile seen within the 10 ft the video covered; check 10–30 ft on site."
+    )
+
+
+def test_without_coverage_every_zone_counts_as_filmed() -> None:
+    assert one([], ZONE2_FIREWOOD).status == "pass"
+
+
+def test_covered_distance_extends_to_the_farthest_measurement() -> None:
+    assert covered_distance([]) == 10
+    assert covered_distance([H("a", "shrub", distance_ft=rng(12, 18.5))]) == 18.5

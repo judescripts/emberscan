@@ -16,8 +16,8 @@ export function scoreTone(score: number): ScoreTone {
 }
 
 /** Points a single result takes off the score. Only adopted rules count (ADR 0004). */
-export function rulePenalty(result: Pick<RuleResult, "zone" | "status" | "rule_status">): number {
-  if (result.rule_status !== "adopted") return 0;
+export function rulePenalty(result: Pick<RuleResult, "zone" | "status" | "rule_status" | "coverage">): number {
+  if (result.rule_status !== "adopted" || result.coverage === "none") return 0;
   const full = result.zone === "Z2" ? 4 : result.zone === "Z1" || result.zone === "Z12" ? 8 : 10;
   if (result.status === "fail") return full;
   if (result.status === "needs-review") return full / 2;

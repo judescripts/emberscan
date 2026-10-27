@@ -14,7 +14,17 @@ const BANDS = [
 ];
 
 /** Top-down schematic. Not to scale: distances are stretched near the house so Zone 0 is readable. */
-export function ZoneMap({ hazards: all, results, buildingLabel }: { hazards: Hazard[]; results: RuleResult[]; buildingLabel: string }) {
+export function ZoneMap({
+  hazards: all,
+  results,
+  buildingLabel,
+  coveredFt,
+}: {
+  hazards: Hazard[];
+  results: RuleResult[];
+  buildingLabel: string;
+  coveredFt?: number | null; // how far out the video covered; beyond it is hatched "not covered"
+}) {
   // Only what needs attention goes on the map; hazards that pass every rule are just counted.
   const hazards = all.filter((h) => {
     const s = hazardStatus(h.id, results);
@@ -97,6 +107,9 @@ export function ZoneMap({ hazards: all, results, buildingLabel }: { hazards: Haz
             </g>
           );
         })}
+        {coveredFt && coveredFt < 100 && (
+          <CoverageOverlay outer={bandRect(100, g, fracs)} inner={bandRect(coveredFt, g, fracs)} coveredFt={coveredFt} />
+        )}
         <rect x={b.x} y={b.y} width={b.w} height={b.h} rx={3} fill="var(--surface)" stroke="var(--text)" strokeWidth={1.6} />
         <text x={g.size / 2} y={g.size / 2 + 4} textAnchor="middle" fontSize={11} fill="var(--muted)" fontWeight={600}>
           Building
@@ -147,6 +160,12 @@ export function ZoneMap({ hazards: all, results, buildingLabel }: { hazards: Haz
         <li className="flex items-center gap-1.5">
           <span className="h-3 w-3 rounded-full border border-dashed border-muted" aria-hidden /> Near a zone line
         </li>
+        {coveredFt && coveredFt < 100 && (
+          <li className="flex items-center gap-1.5">
+            <span className="h-3 w-3 rounded-sm bg-[repeating-linear-gradient(45deg,var(--muted)_0_1px,transparent_1px_4px)] opacity-60" aria-hidden />{" "}
+            Not covered by this video
+          </li>
+        )}
       </ul>
       <p className="text-center text-xs text-muted">
         Sketch, not to scale: zones are stretched so the closest ones are readable. Use Zoom in for a closer look.
@@ -213,5 +232,49 @@ export function ZoneMap({ hazards: all, results, buildingLabel }: { hazards: Haz
         </p>
       )}
     </div>
+  );
+}
+
+type Box = ReturnType<typeof bandRect>;
+
+/** Hatches the ground beyond what the walkaround filmed, with a dashed line where it stops. */
+function CoverageOverlay({ outer, inner, coveredFt }: { outer: Box; inner: Box; coveredFt: number }) {
+  const rx = (r: Box) => Math.min(r.r, 40);
+  return (
+    <g aria-hidden>
+      <defs>
+        <pattern id="zonemap-uncovered" width={7} height={7} patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+          <line x1={0} y1={0} x2={0} y2={7} stroke="var(--muted)" strokeWidth={1.4} strokeOpacity={0.35} />
+        </pattern>
+        <mask id="zonemap-uncovered-mask">
+          <rect x={outer.x} y={outer.y} width={outer.w} height={outer.h} rx={rx(outer)} fill="white" />
+          <rect x={inner.x} y={inner.y} width={inner.w} height={inner.h} rx={rx(inner)} fill="black" />
+        </mask>
+      </defs>
+      <rect
+        x={outer.x}
+        y={outer.y}
+        width={outer.w}
+        height={outer.h}
+        rx={rx(outer)}
+        fill="url(#zonemap-uncovered)"
+        mask="url(#zonemap-uncovered-mask)"
+      />
+      <rect
+        x={inner.x}
+        y={inner.y}
+        width={inner.w}
+        height={inner.h}
+        rx={rx(inner)}
+        fill="none"
+        stroke="var(--text)"
+        strokeOpacity={0.55}
+        strokeWidth={1.2}
+        strokeDasharray="5 4"
+      />
+      <text x={outer.x + outer.w / 2} y={outer.y + outer.h - 8} textAnchor="middle" fontSize={10} fontWeight={700} fill="var(--muted)">
+        {`Hatched: not covered by this video (beyond about ${coveredFt} ft)`}
+      </text>
+    </g>
   );
 }

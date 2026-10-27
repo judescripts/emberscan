@@ -122,11 +122,20 @@ async function ReportView({ params }: { params: PageProps<"/report/[scanId]">["p
             <h2 id="score-title" className="text-xl font-bold text-ink">
               {scoreLabel(report.score.score)}
             </h2>
-            <p className="text-sm text-muted">Score counts rules in force today. Proposed Zone 0 rules are tracked separately below.</p>
+            <p className="text-sm text-muted">
+              Score counts rules in force today
+              {report.score.covered_ft ? `, for the ground the video covered (about ${report.score.covered_ft} ft out from the walls)` : ""}.
+              Proposed Zone 0 rules are tracked separately below.
+            </p>
             <div className="mt-2 flex flex-wrap gap-1.5">
               <Pill tone="fail">{report.score.fails} fail</Pill>
               <Pill tone="review">{report.score.reviews} need review</Pill>
               <Pill tone="pass">{report.score.passes} pass</Pill>
+              {(report.score.not_covered ?? 0) > 0 && (
+                <a href="#findings">
+                  <Pill>{report.score.not_covered} not covered by this video</Pill>
+                </a>
+              )}
               <Pill>{report.hazards.length} hazards tracked</Pill>
             </div>
           </div>
@@ -193,7 +202,7 @@ async function ReportView({ params }: { params: PageProps<"/report/[scanId]">["p
 
       {/* 4. Zone map */}
       <ReportSection id="zone-map" kicker="Where things are" title="Zone map">
-        <ZoneMap hazards={report.hazards} results={report.results} buildingLabel={building.label} />
+        <ZoneMap hazards={report.hazards} results={report.results} buildingLabel={building.label} coveredFt={report.score.covered_ft} />
       </ReportSection>
 
       {/* 5. Evidence */}

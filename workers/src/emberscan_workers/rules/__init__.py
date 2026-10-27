@@ -1,6 +1,13 @@
 """Rule packs and the deterministic rules engine (ADR 0004)."""
 
-from .engine import VEGETATION_ANY, EngineResult, compute_score, evaluate, score_label
+from .engine import (
+    VEGETATION_ANY,
+    EngineResult,
+    compute_score,
+    covered_distance,
+    evaluate,
+    score_label,
+)
 from .pack import RulePack, load_pack
 
 __all__ = [
@@ -8,6 +15,7 @@ __all__ = [
     "EngineResult",
     "RulePack",
     "compute_score",
+    "covered_distance",
     "evaluate",
     "load_pack",
     "score_label",

@@ -17,12 +17,12 @@ export function ThumbStrip({ thumbs, max }: { thumbs: Thumb[]; max: number }) {
         <a
           key={t.id}
           href={`#${t.id}`}
-          className="group relative block h-16 w-16 shrink-0 overflow-hidden rounded-lg border border-line bg-soft"
+          className="group/thumb relative block h-16 w-16 shrink-0 overflow-hidden rounded-lg border border-line bg-soft"
           title={`${t.n}. ${t.label}: see evidence`}
         >
           {t.src ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={t.src} alt="" loading="lazy" className="h-full w-full object-cover transition-transform group-hover:scale-105" />
+            <img src={t.src} alt="" loading="lazy" className="h-full w-full object-cover transition-transform group-hover/thumb:scale-105" />
           ) : (
             <span className="flex h-full w-full items-center justify-center px-1 text-center text-[10px] text-muted">{t.label}</span>
           )}

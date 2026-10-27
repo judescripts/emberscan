@@ -57,6 +57,8 @@ export interface RuleResult {
   hazard_ids: string[];
   citation_url: string;
   citation_label: string;
+  /** How much of the rule's area the video covered; "none" = beyond it, not in the score. */
+  coverage?: "full" | "partial" | "none";
 }
 
 export interface Fix {
@@ -100,6 +102,8 @@ export interface ScoreBlock {
   zone0_met: number;
   zone0_total: number;
   unfilmed_sides: string[];
+  not_covered?: number;
+  covered_ft?: number | null;
 }
 
 export interface VideoInfo {

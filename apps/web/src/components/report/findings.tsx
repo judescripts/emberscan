@@ -9,8 +9,9 @@ import { Citation, cx, StatusPill } from "../ui";
 const FILTERS = [
   { id: "open", label: "Open items", test: (r: RuleResult) => r.status !== "pass" },
   { id: "fail", label: "Fails", test: (r: RuleResult) => r.status === "fail" },
-  { id: "review", label: "Needs review", test: (r: RuleResult) => r.status === "needs-review" },
+  { id: "review", label: "Needs review", test: (r: RuleResult) => r.status === "needs-review" && r.coverage !== "none" },
   { id: "pass", label: "Passes", test: (r: RuleResult) => r.status === "pass" },
+  { id: "uncovered", label: "Not covered", test: (r: RuleResult) => r.coverage === "none" },
 ] as const;
 
 export function Findings({
@@ -32,6 +33,7 @@ export function Findings({
       <div className="mb-3 flex flex-wrap gap-1.5" role="group" aria-label="Filter findings">
         {FILTERS.map((f) => {
           const count = results.filter(f.test).length;
+          if (f.id === "uncovered" && count === 0) return null;
           const on = f.id === filter;
           return (
             <button
@@ -56,7 +58,13 @@ export function Findings({
           {shown.map((r) => (
             <li key={r.rule_id} id={`rule-${r.rule_id}`} className="target-ring scroll-mt-20 rounded-xl border border-line bg-surface p-3">
               <div className="flex flex-wrap items-center gap-2">
-                <StatusPill status={r.status} />
+                {r.coverage === "none" ? (
+                  <span className="rounded-full border border-dashed border-muted px-2 py-0.5 text-xs font-semibold text-muted">
+                    Not covered by this video
+                  </span>
+                ) : (
+                  <StatusPill status={r.status} />
+                )}
                 <span className="font-mono text-xs text-muted">{r.rule_id}</span>
                 <span className="text-xs text-muted">
                   {zoneWords(r.zone)} · {rulePackStatusWords(r.rule_status)}

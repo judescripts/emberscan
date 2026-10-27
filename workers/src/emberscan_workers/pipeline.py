@@ -39,7 +39,7 @@ from .privacy import (
     guard_frames,
     split_privacy,
 )
-from .rules import evaluate, load_pack
+from .rules import covered_distance, evaluate, load_pack
 from .spend import SpendLedger, SpendLimitExceeded
 from .spend.pricing import SAM_USD_PER_1K_FRAMES, sam_video_cost
 
@@ -425,7 +425,13 @@ async def run_scan(
 
         await p.set("rules", "running")
         pack = load_pack("us-ca")
-        engine = evaluate(hazards, pack, eave_depth_ft=eave, include_proposed=job.include_proposed)
+        engine = evaluate(
+            hazards,
+            pack,
+            eave_depth_ft=eave,
+            include_proposed=job.include_proposed,
+            covered_ft=covered_distance(hazards),
+        )
         n = engine.score
         await p.set(
             "rules",

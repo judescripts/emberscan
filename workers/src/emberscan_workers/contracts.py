@@ -75,6 +75,9 @@ class RuleResult(BaseModel):
     hazard_ids: list[str] = Field(default_factory=list)
     citation_url: str
     citation_label: str
+    # How much of the rule's area the video covered. "none": the area is beyond what a
+    # walkaround films, so the result is needs-review and doesn't move the score.
+    coverage: Literal["full", "partial", "none"] = "full"
 
 
 class Illustration(BaseModel):
@@ -123,6 +126,8 @@ class ScoreBlock(BaseModel):
     zone0_met: int
     zone0_total: int
     unfilmed_sides: list[str] = Field(default_factory=list)
+    not_covered: int = 0  # rules whose area the video didn't reach (not in reviews, no score)
+    covered_ft: float | None = None  # how far out from the walls the video counts as covering
 
 
 class Report(BaseModel):

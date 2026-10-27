@@ -33,7 +33,7 @@ export function EvidenceImage({
   return (
     <button
       type="button"
-      className="group relative block w-full overflow-hidden rounded-xl bg-soft text-left"
+      className="group/ev relative block w-full overflow-hidden rounded-xl bg-soft text-left"
       onClick={() => setOpen((o) => !o)}
       onMouseLeave={() => setOpen(false)} // a click on desktop shouldn't pin it open after the mouse leaves
       aria-expanded={hasWhy ? open : undefined}
@@ -47,7 +47,7 @@ export function EvidenceImage({
           <span
             className={cx(
               "absolute top-2 right-2 rounded-full bg-black/60 px-2 py-0.5 text-[11px] font-semibold text-white transition-opacity",
-              open ? "opacity-0" : "group-hover:opacity-0",
+              open ? "opacity-0" : "group-hover/ev:opacity-0",
             )}
             aria-hidden
           >
@@ -57,7 +57,7 @@ export function EvidenceImage({
           <div
             className={cx(
               "absolute inset-x-0 bottom-0 max-h-full overflow-y-auto bg-gradient-to-t from-black/90 via-black/80 to-black/0 px-3 pt-8 pb-3 text-white transition-opacity",
-              open ? "opacity-100" : "pointer-events-none opacity-0 group-hover:opacity-100",
+              open ? "opacity-100" : "pointer-events-none opacity-0 group-hover/ev:opacity-100",
             )}
           >
             <p className="text-[11px] font-semibold tracking-wide text-white/70 uppercase">Why it was flagged</p>

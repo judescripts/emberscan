@@ -12,7 +12,10 @@ Decision logic, per hazard and per rule:
 * A low-confidence hazard can never produce a violation; it is downgraded to review.
 * A violation fails an `adopted` rule. For `proposed` / `guidance` rules it becomes
   needs-review ("would not meet the proposed rule" / "below recommended practice").
-* With no relevant hazards a rule passes only if its area was filmed.
+* With no relevant hazards a rule passes only if its area was filmed. A walkaround films the
+  ground near the walls (`covered_ft` out); a rule whose area lies wholly beyond that is
+  needs-review with coverage "none" and doesn't move the score, and a pass that reaches beyond
+  it says how far the video covered (coverage "partial").
 """
 
 from __future__ import annotations
@@ -40,6 +43,7 @@ __all__ = [
     "VEGETATION_ANY",
     "EngineResult",
     "compute_score",
+    "covered_distance",
     "evaluate",
     "score_label",
 ]
@@ -67,6 +71,10 @@ GROUND_SIDES: tuple[str, ...] = ("N", "E", "S", "W")
 ZONE_PENALTY: dict[str, int] = {"ALL": 10, "Z0": 10, "Z1": 8, "Z12": 8, "Z2": 4}
 DEFAULT_PENALTY = 8
 UNFILMED_CAP = 80
+
+#: How far out from the walls a walkaround counts as covering the ground, at least: the camera
+#: is about 6-10 ft back from the wall. Measured hazards farther out extend it.
+DEFAULT_COVERED_FT = 10.0
 
 _STATUS_ORDER: dict[str, int] = {"fail": 0, "needs-review": 1, "pass": 2}
 _ZONE_ORDER: dict[str, int] = {"ALL": 0, "Z0": 1, "Z1": 2, "Z12": 3, "Z2": 4}
@@ -350,6 +358,23 @@ def _unfilmed_note(unfilmed: list[str]) -> str:
     return f"; the {_join(unfilmed, 'and')} {noun} not filmed"
 
 
+def _area(rule: Rule, zone: Zone | None) -> tuple[float, float] | None:
+    """The rule's band of ground out from the walls, or None when it isn't a ground band
+    (roof, chimney, gutters and other whole-building rules)."""
+    c = rule.check
+    if rule.zone == "ALL" or isinstance(c, Present):
+        return None
+    if isinstance(c, AbsentWithin):
+        if c.ft == "eave":
+            return (0.0, c.max_ft if c.max_ft is not None else 5.0)
+        return (c.min_ft or 0.0, float(c.ft))
+    if isinstance(c, ManualReview) and c.ft is not None:
+        return (0.0, float(c.ft))
+    if zone is None or zone.max_ft is None:
+        return None
+    return (zone.min_ft or 0.0, zone.max_ft)
+
+
 def _evaluate_rule(
     rule: Rule,
     zone: Zone | None,
@@ -357,6 +382,7 @@ def _evaluate_rule(
     eave: Range | None,
     observed: bool,
     unfilmed: list[str],
+    covered_ft: float | None = None,
 ) -> RuleResult:
     findings = [
         f
@@ -368,9 +394,19 @@ def _evaluate_rule(
     reviews = [f for f in findings if f.outcome == "review"]
     clears = [f for f in findings if f.outcome == "clear"]
 
+    area = _area(rule, zone) if covered_ft is not None else None
+    reach = f"the video covered about {_num(covered_ft or 0)} ft out from the walls"
+    coverage: Literal["full", "partial", "none"] = "full"
     status: RuleStatus
     driving: list[_Finding]
-    if violations:
+    if area and area[0] >= (covered_ft or 0) and not findings:
+        driving = []
+        status, coverage = "needs-review", "none"
+        reason = (
+            f"Not covered by this video: {reach}, and this rule is about "
+            f"{_band(*area)} ft out. Check on site."
+        )
+    elif violations:
         driving = violations
         text = _summarize(violations)
         if rule.status == "adopted":
@@ -395,7 +431,17 @@ def _evaluate_rule(
         reason = f"No {_human_classes(rule.hazard_classes)} seen{_scope(rule, zone)}"
         reason += f"{' on the filmed sides' if unfilmed else ''}{_unfilmed_note(unfilmed)}."
 
+    if status == "pass" and area and area[1] > (covered_ft or 0):
+        coverage = "partial"
+        scope = _scope(rule, zone)
+        if not clears and scope.startswith(" within ") and scope in reason:
+            filmed = f" within the {_num(covered_ft or 0)} ft the video covered"
+            reason = reason.replace(scope, filmed, 1)[:-1]
+        else:
+            reason = f"{reason[:-1]}; {reach}"
+        reason += f"; check {_band(covered_ft or 0, area[1])} ft on site."
     return RuleResult(
+        coverage=coverage,
         rule_id=rule.id,
         title=rule.title,
         zone=rule.zone,
@@ -445,7 +491,7 @@ def compute_score(results: list[RuleResult], unfilmed_sides: list[str]) -> Score
     separate readiness meter (zone0_met / zone0_total)."""
     score = 100
     for r in results:
-        if r.rule_status != "adopted" or r.status == "pass":
+        if r.rule_status != "adopted" or r.status == "pass" or r.coverage == "none":
             continue
         penalty = ZONE_PENALTY.get(r.zone, DEFAULT_PENALTY)
         score -= penalty if r.status == "fail" else penalty // 2
@@ -457,7 +503,8 @@ def compute_score(results: list[RuleResult], unfilmed_sides: list[str]) -> Score
         score=score,
         label=score_label(score),
         fails=sum(r.status == "fail" for r in results),
-        reviews=sum(r.status == "needs-review" for r in results),
+        reviews=sum(r.status == "needs-review" and r.coverage != "none" for r in results),
+        not_covered=sum(r.coverage == "none" for r in results),
         passes=sum(r.status == "pass" for r in results),
         zone0_met=sum(r.status == "pass" for r in zone0),
         zone0_total=len(zone0),
@@ -479,6 +526,7 @@ def evaluate(
     eave_depth_ft: Range | None,
     include_proposed: bool = True,
     observed_sides: set[str] | None = None,
+    covered_ft: float | None = None,
 ) -> EngineResult:
     """Evaluate every rule in `pack` against the scan's hazards.
 
@@ -489,6 +537,8 @@ def evaluate(
         include_proposed: When False, proposed and guidance rules are left out entirely.
         observed_sides: Wall sides the video covered. None means coverage is unknown and is
             treated as complete. Missing N/E/S/W sides cap the score and are noted in passes.
+        covered_ft: How far out from the walls the video covered the ground (see
+            `covered_distance`). None treats every zone as covered.
 
     Returns:
         One RuleResult per evaluated rule, ordered fail -> needs-review -> pass, then zone
@@ -502,9 +552,20 @@ def evaluate(
         observed = any(s in observed_sides for s in GROUND_SIDES)
         unfilmed = [s for s in GROUND_SIDES if s not in observed_sides]
     results = [
-        _evaluate_rule(rule, zones.get(rule.zone), ordered, eave_depth_ft, observed, unfilmed)
+        _evaluate_rule(
+            rule, zones.get(rule.zone), ordered, eave_depth_ft, observed, unfilmed, covered_ft
+        )
         for rule in pack.rules
         if include_proposed or rule.status == "adopted"
     ]
     results.sort(key=_sort_key)
-    return EngineResult(results=results, score=compute_score(results, unfilmed))
+    score = compute_score(results, unfilmed)
+    score.covered_ft = covered_ft
+    return EngineResult(results=results, score=score)
+
+
+def covered_distance(hazards: list[Hazard]) -> float:
+    """How far out from the walls the walkaround covered: the default reach, or the farthest
+    measured hazard if one was measured farther out."""
+    far = [_bounds(h.distance_ft)[1] for h in hazards if h.distance_ft is not None]
+    return round(min(max([DEFAULT_COVERED_FT, *far]), 100.0), 1)
