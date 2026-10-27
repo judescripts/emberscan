@@ -24,8 +24,9 @@ export function AgentTrace({ report }: { report: Report }) {
   const toolCalls = steps.filter((s) => s.kind === "tool_call").length;
   const cost = report.cost as { spent_usd?: number; calls?: number };
   return (
-    <div className="overflow-hidden rounded-2xl bg-trace text-trace-fg">
-      <div className="border-b border-trace-line px-4 py-3 sm:px-5">
+    <details id="how" open data-report-section className="group scroll-mt-28 overflow-hidden rounded-2xl bg-trace text-trace-fg">
+      <summary className="flex cursor-pointer list-none items-start justify-between gap-3 border-b border-trace-line px-4 py-3 sm:px-5 [&::-webkit-details-marker]:hidden">
+        <div>
         <p className="font-mono text-[11px] tracking-widest text-trace-muted uppercase">Agent trace · Muse Spark</p>
         <h2 id="agent-trace" className="text-lg font-bold">
           How EmberScan got here
@@ -34,7 +35,13 @@ export function AgentTrace({ report }: { report: Report }) {
           The agent plans, calls tools over the measured hazards and rule results, then a checker verifies every claim. It can explain
           and prioritize results but can&apos;t change them.
         </p>
-      </div>
+        </div>
+        <span aria-hidden className="mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white/10 transition-transform group-open:rotate-180">
+          <svg viewBox="0 0 16 16" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2}>
+            <path d="M4 6l4 4 4-4" />
+          </svg>
+        </span>
+      </summary>
       {steps.length === 0 ? (
         <p className="px-5 py-4 text-sm text-trace-muted">No agent trace in this report.</p>
       ) : (
@@ -85,6 +92,6 @@ export function AgentTrace({ report }: { report: Report }) {
         {typeof cost?.calls === "number" && ` · ${cost.calls} model calls`}
         {typeof cost?.spent_usd === "number" && ` · $${cost.spent_usd.toFixed(2)} spent`}
       </p>
-    </div>
+    </details>
   );
 }

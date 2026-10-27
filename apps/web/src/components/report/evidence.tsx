@@ -118,7 +118,7 @@ export function EvidenceList({ report, imageBase }: { report: Report; imageBase:
         const tone = toneFor(status);
         const rules = report.results.filter((r) => r.hazard_ids.includes(h.id));
         return (
-          <li key={h.id} id={h.id} className="target-ring scroll-mt-20 rounded-2xl border border-line bg-surface p-4">
+          <li key={h.id} id={h.id} className="target-ring scroll-mt-28 rounded-2xl border border-line bg-surface p-4">
             <div className="mb-3 flex items-start gap-3">
               <span className={cx("flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-sm font-bold text-surface", BG[tone])}>
                 {i + 1}

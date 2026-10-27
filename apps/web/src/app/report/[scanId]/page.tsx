@@ -2,13 +2,16 @@ import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { Suspense } from "react";
 import { AgentTrace } from "@/components/report/agent-trace";
+import { EvidenceThumbs } from "@/components/report/evidence-thumbs";
+import { ReportNav } from "@/components/report/report-nav";
+import { ReportSection } from "@/components/report/section";
 import { EvidenceList } from "@/components/report/evidence";
 import { Findings } from "@/components/report/findings";
 import { FixTags } from "@/components/report/fix-tags";
 import { FixTracker } from "@/components/report/fix-tracker";
 import { SinceLastScan } from "@/components/report/since-last";
 import { ZoneMap } from "@/components/report/zone-map";
-import { Card, cx, Pill, SampleBadge, ScoreBadge, SectionTitle, Skeleton } from "@/components/ui";
+import { Card, cx, Pill, SampleBadge, ScoreBadge, Skeleton } from "@/components/ui";
 import { requestDb } from "@/lib/db";
 import { getBuilding, getCommunity, getScan, listScans, listTasks } from "@/lib/db/queries";
 import { formatDate, formatRange, sideWords } from "@/lib/format";
@@ -87,8 +90,20 @@ async function ReportView({ params }: { params: PageProps<"/report/[scanId]">["p
         )}
       </header>
 
+      <ReportNav
+        items={[
+          { id: "score", label: "Score" },
+          { id: "start-here", label: "Start here" },
+          { id: "zone-map", label: "Map" },
+          { id: "evidence", label: "Evidence" },
+          { id: "all-fixes", label: "Fix plan" },
+          { id: "findings", label: "Rules" },
+          { id: "how", label: "How it was made" },
+        ]}
+      />
+
       {/* 2. Score */}
-      <Card aria-labelledby="score-title">
+      <Card aria-labelledby="score-title" id="score" className="scroll-mt-28">
         <div className="flex flex-wrap items-center gap-4">
           <ScoreBadge score={report.score.score} size="lg" />
           <div className="min-w-0 flex-1">
@@ -131,75 +146,52 @@ async function ReportView({ params }: { params: PageProps<"/report/[scanId]">["p
       </Card>
 
       {/* 3. Start here */}
-      <Card aria-labelledby="start-here">
-        <SectionTitle id="start-here" kicker="Start here">
-          {start.length ? `Top ${start.length} fixes` : "No fixes suggested"}
-        </SectionTitle>
+      <ReportSection id="start-here" kicker="Start here" title={start.length ? `Top ${start.length} fixes` : "No fixes suggested"}>
         {start.length > 0 && (
           <>
             <p className="mb-3 text-sm text-ink">
               Do these and rescan: score <strong>{report.score.score}</strong> → <strong>{projected}</strong>{" "}
               <span className="text-muted">({scoreLabel(projected)})</span>
             </p>
-            <ol className="flex flex-col gap-3">
+            <ol className="flex flex-col gap-4">
               {start.map((f, i) => (
                 <li key={f.id} className="flex gap-3">
                   <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-soft text-sm font-bold text-ink">{i + 1}</span>
-                  <div className="min-w-0">
-                    <a href={`#fix-${f.id}`} className="font-semibold text-ink underline decoration-line underline-offset-2 hover:decoration-brand">
-                      {f.title}
-                    </a>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-semibold text-ink">{f.title}</p>
                     <p className="text-sm text-muted">{f.why}</p>
                     <div className="mt-1.5">
                       <FixTags fix={f} owner={taskByRule.get(taskRuleId(f))?.responsibility} communityType={community?.type} />
                     </div>
+                    <EvidenceThumbs report={report} hazardIds={f.hazard_ids} imageBase={imageBase} />
+                    <a href={`#fix-${f.id}`} className="mt-2 inline-block text-xs font-semibold text-brand underline underline-offset-2">
+                      Track this fix
+                    </a>
                   </div>
                 </li>
               ))}
             </ol>
           </>
         )}
-      </Card>
+      </ReportSection>
 
       {/* 4. Zone map */}
-      <Card aria-labelledby="zone-map">
-        <SectionTitle id="zone-map" kicker="Where things are">
-          Zone map
-        </SectionTitle>
+      <ReportSection id="zone-map" kicker="Where things are" title="Zone map">
         <ZoneMap hazards={report.hazards} results={report.results} buildingLabel={building.label} />
-      </Card>
+      </ReportSection>
 
       {/* 5. Evidence */}
-      <section aria-labelledby="evidence">
-        <SectionTitle id="evidence" kicker="Tracked across the video">
-          Evidence
-        </SectionTitle>
+      <ReportSection id="evidence" kicker="Tracked across the video" title={`Evidence (${report.hazards.length})`} card={false}>
         <EvidenceList report={report} imageBase={imageBase} />
-      </section>
+      </ReportSection>
 
-      {/* 6. Agent trace */}
-      <section aria-labelledby="agent-trace">
-        <AgentTrace report={report} />
-      </section>
-
-      {/* 7. Since last scan */}
-      <Card aria-labelledby="since-last">
-        <SectionTitle id="since-last" kicker="Progress">
-          Since last scan
-        </SectionTitle>
-        <SinceLastScan report={report} previous={prevScan?.report ? { report: prevScan.report, createdAt: prevScan.createdAt } : null} />
-      </Card>
-
-      {/* 8. All fixes, with tracking */}
-      <section aria-labelledby="all-fixes">
-        <SectionTitle id="all-fixes" kicker="Fix plan">
-          All fixes ({allFixes.length})
-        </SectionTitle>
+      {/* 6. All fixes, with tracking */}
+      <ReportSection id="all-fixes" kicker="Fix plan" title={`All fixes (${allFixes.length})`} card={false}>
         <ol className="flex flex-col gap-3">
           {allFixes.map((f) => {
             const t = taskByRule.get(taskRuleId(f));
             return (
-              <li key={f.id} id={`fix-${f.id}`} className="target-ring scroll-mt-20 rounded-2xl border border-line bg-surface p-4">
+              <li key={f.id} id={`fix-${f.id}`} className="target-ring scroll-mt-28 rounded-2xl border border-line bg-surface p-4">
                 <h3 className="font-bold text-ink">{f.title}</h3>
                 <p className="mt-0.5 text-sm text-muted">{f.why}</p>
                 <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -210,6 +202,7 @@ async function ReportView({ params }: { params: PageProps<"/report/[scanId]">["p
                     </a>
                   ))}
                 </div>
+                <EvidenceThumbs report={report} hazardIds={f.hazard_ids} imageBase={imageBase} max={6} />
                 <div className="mt-3">
                   <FixTracker
                     communityType={community?.type}
@@ -220,16 +213,20 @@ async function ReportView({ params }: { params: PageProps<"/report/[scanId]">["p
             );
           })}
         </ol>
-      </section>
+      </ReportSection>
 
-      {/* 9. Findings by rule */}
-      <Card aria-labelledby="findings">
-        <SectionTitle id="findings" kicker="Every rule checked">
-          Findings by rule
-        </SectionTitle>
+      {/* 7. Since last scan */}
+      <ReportSection id="since-last" kicker="Progress" title="Since last scan" defaultOpen={Boolean(prevScan?.report)}>
+        <SinceLastScan report={report} previous={prevScan?.report ? { report: prevScan.report, createdAt: prevScan.createdAt } : null} />
+      </ReportSection>
+
+      {/* 8. Findings by rule */}
+      <ReportSection id="findings" kicker="Every rule checked" title={`Findings by rule (${report.results.length})`}>
         <Findings results={report.results} hazards={report.hazards} plain={plain} />
-      </Card>
+      </ReportSection>
 
+      {/* 9. Agent trace */}
+      <AgentTrace report={report} />
       {/* 10. Full disclaimer */}
       <footer className={cx("rounded-2xl border border-line bg-soft p-4 text-sm text-ink")}>
         <h2 className="mb-1 font-bold">About this report</h2>
