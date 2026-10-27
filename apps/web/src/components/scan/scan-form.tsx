@@ -23,7 +23,7 @@ export function ScanForm({
   buildings,
   initialBuilding,
 }: {
-  buildings: { id: string; label: string; eave: string }[];
+  buildings: { id: string; label: string; eave: string; needsCorners: boolean }[];
   initialBuilding: string | null;
 }) {
   const router = useRouter();
@@ -67,7 +67,7 @@ export function ScanForm({
     setUploadPct(0);
     const fd = new FormData();
     for (const f of files) fd.append("video", f, f.name || "walkaround.mp4");
-    for (const f of corners) fd.append("corner", f, f.name || "corner.mp4");
+    if (building?.needsCorners) for (const f of corners) fd.append("corner", f, f.name || "corner.mp4");
     if (sides.some(Boolean)) fd.append("clip_sides", files.map((_, i) => sides[i] ?? "").join(","));
     const xhr = new XMLHttpRequest();
     xhrRef.current = xhr;
@@ -229,28 +229,30 @@ export function ScanForm({
         )}
       </div>
 
-      <div>
-        <label htmlFor="corner" className="text-sm font-semibold text-ink">
-          Corner clips <span className="font-normal text-muted">(optional, for eave depth)</span>
-        </label>
-        <input
-          id="corner"
-          name="corner"
-          type="file"
-          accept="video/*"
-          multiple
-          onChange={(e) => setCorners(sortByName(e.target.files))}
-          className={cx(
-            inputClass,
-            "mt-1 file:mr-3 file:rounded-lg file:border-0 file:bg-soft file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-ink",
-          )}
-          aria-describedby="corner-help"
-        />
-        <p id="corner-help" className="mt-1 text-xs text-muted">
-          3–5 s at each corner, filmed along the wall so the roof overhang shows in profile, marker on the ground. All four
-          corners if the eaves differ. {clipSummary(corners)}
-        </p>
-      </div>
+      {building?.needsCorners && (
+        <div>
+          <label htmlFor="corner" className="text-sm font-semibold text-ink">
+            Corner clips <span className="font-normal text-muted">(optional, for eave depth)</span>
+          </label>
+          <input
+            id="corner"
+            name="corner"
+            type="file"
+            accept="video/*"
+            multiple
+            onChange={(e) => setCorners(sortByName(e.target.files))}
+            className={cx(
+              inputClass,
+              "mt-1 file:mr-3 file:rounded-lg file:border-0 file:bg-soft file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-ink",
+            )}
+            aria-describedby="corner-help"
+          />
+          <p id="corner-help" className="mt-1 text-xs text-muted">
+            3–5 s at each corner, filmed along the wall so the roof overhang shows in profile, marker on the ground. All four
+            corners if the eaves differ. {clipSummary(corners)}
+          </p>
+        </div>
+      )}
 
       {needsPasscode && (
         <div>

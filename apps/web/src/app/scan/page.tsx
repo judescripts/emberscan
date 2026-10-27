@@ -81,6 +81,8 @@ async function FormSection({ searchParams }: { searchParams: PageProps<"/scan">[
       buildings={list.map((b) => ({
         id: b.id,
         label: b.label,
+        // corner clips only help when the eave depth isn't known yet
+        needsCorners: b.eaveMode === "video",
         eave:
           b.eaveMode === "none"
             ? "No eave overhang (entered): no corner clips needed"
