@@ -13,13 +13,20 @@ const BANDS = [
 ];
 
 /** Top-down schematic. Not to scale: distances are stretched near the house so Zone 0 is readable. */
-export function ZoneMap({ hazards, results, buildingLabel }: { hazards: Hazard[]; results: RuleResult[]; buildingLabel: string }) {
+export function ZoneMap({ hazards: all, results, buildingLabel }: { hazards: Hazard[]; results: RuleResult[]; buildingLabel: string }) {
+  // Only what needs attention goes on the map; hazards that pass every rule are just counted.
+  const hazards = all.filter((h) => {
+    const s = hazardStatus(h.id, results);
+    return s === "fail" || s === "needs-review";
+  });
+  const okCount = all.length - hazards.length;
   const g = DEFAULT_GEOMETRY;
   const b = buildingRect(g);
   const fracs = fracsFor(hazards);
-  const pins = layoutPins(hazards, g, fracs);
+  // numbers match the evidence list, which numbers every tracked hazard
+  const pins = layoutPins(hazards, g, fracs).map((p) => ({ ...p, n: all.findIndex((h) => h.id === p.hazardId) + 1 }));
   const unmapped = hazards.filter((h) => !pins.some((p) => p.hazardId === h.id));
-  const byId = new Map(hazards.map((h) => [h.id, h]));
+  const byId = new Map(all.map((h) => [h.id, h]));
 
   if (pins.length === 0) {
     // No sides recorded: a top-down map would be empty, so show distance from the wall instead.
@@ -33,7 +40,7 @@ export function ZoneMap({ hazards, results, buildingLabel }: { hazards: Hazard[]
           top-down map.
         </p>
         {measured.length > 0 ? (
-          <WallProfile hazards={measured} all={hazards} results={results} />
+          <WallProfile hazards={measured} all={all} results={results} />
         ) : (
           <p className="text-sm text-muted">No hazards were measured with the marker in this scan.</p>
         )}
@@ -45,7 +52,7 @@ export function ZoneMap({ hazards, results, buildingLabel }: { hazards: Hazard[]
               <span key={h.id}>
                 {i > 0 && ", "}
                 <a className="underline" href={`#${h.id}`}>
-                  {hazards.indexOf(h) + 1}. {h.label}
+                  {all.indexOf(h) + 1}. {h.label}
                 </a>
               </span>
             ))}
@@ -115,14 +122,12 @@ export function ZoneMap({ hazards, results, buildingLabel }: { hazards: Hazard[]
           <span className="h-3 w-3 rounded-full bg-review" aria-hidden /> Needs review
         </li>
         <li className="flex items-center gap-1.5">
-          <span className="h-3 w-3 rounded-full bg-pass" aria-hidden /> Passes
-        </li>
-        <li className="flex items-center gap-1.5">
           <span className="h-3 w-3 rounded-full border border-dashed border-muted" aria-hidden /> Near a zone line
         </li>
       </ul>
       <p className="text-center text-xs text-muted">
         Sketch, not to scale: zones are stretched to fit where the hazards are. Distances per wall below.
+        {okCount > 0 && ` ${okCount} more seen with no issue (listed under Evidence).`}
       </p>
       {(["N", "E", "S", "W"] as const).map((side) => {
         const onSide = hazards.filter((h) => h.side === side && h.distance_ft);
@@ -130,7 +135,7 @@ export function ZoneMap({ hazards, results, buildingLabel }: { hazards: Hazard[]
         return (
           <div key={side} className="mt-2 border-t border-line pt-3">
             <h3 className="mb-1 text-sm font-semibold text-ink">{sideWords(side)} · distance from the wall</h3>
-            <WallProfile hazards={onSide} all={hazards} results={results} />
+            <WallProfile hazards={onSide} all={all} results={results} />
           </div>
         );
       })}
@@ -141,7 +146,7 @@ export function ZoneMap({ hazards, results, buildingLabel }: { hazards: Hazard[]
             <span key={h.id}>
               {i > 0 && ", "}
               <a className="underline" href={`#${h.id}`}>
-                {hazards.indexOf(h) + 1}. {h.label}
+                {all.indexOf(h) + 1}. {h.label}
               </a>
             </span>
           ))}{" "}
