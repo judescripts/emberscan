@@ -31,7 +31,7 @@ All code, data and assets in this repository were created during the hackathon, 
 - **Rules:** California's defensible-space rules only (`docs/rules/us-ca.json`: PRC 4291, Gov. Code 51182, 14 CCR 1299.03, the proposed Zone 0 rules and Board guidance, checked Oct 26, 2026). Local ordinances aren't included.
 - **Other states** need their own rule pack. The rules engine is state-agnostic; the work is the legal research and each state's hazard-zone data.
 - **Addresses outside California** are flagged on the building, the New scan form and the report.
-- **Hazard-zone lookup** reads Los Angeles County's Fire Hazard Severity Zone map; elsewhere in California the research note points to CAL FIRE's zone viewer instead.
+- **Hazard-zone lookup** covers all of California: CAL FIRE / State Fire Marshal's Fire Hazard Severity Zone maps for State Responsibility Areas and for Local Responsibility Areas (2025). Federal land isn't mapped by the state.
 
 ## AI previews of the fix
 

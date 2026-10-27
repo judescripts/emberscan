@@ -30,7 +30,7 @@ CENSUS = {
         ]
     }
 }
-ZONE = {"features": [{"attributes": {"HAZ_CLASS": "Very High", "SRA": "LRA", "Revised": 0}}]}
+ZONE = {"features": [{"attributes": {"FHSZ_Description": "Very High", "SRA": "LRA"}}]}
 FIRES = {"features": [{"attributes": {"FIRE_NAME": "HUGHES", "YEAR_": 2025, "GIS_ACRES": 10397}}]}
 
 
@@ -41,6 +41,8 @@ def _http(census: dict = CENSUS) -> httpx.AsyncClient:
             return httpx.Response(200, json=census)
         if "Perimeters" in url:
             return httpx.Response(200, json=FIRES)
+        if "FHSZSRA" in url:  # not in a State Responsibility Area zone
+            return httpx.Response(200, json={"features": []})
         return httpx.Response(200, json=ZONE)
 
     return httpx.AsyncClient(transport=httpx.MockTransport(handler))
@@ -86,7 +88,7 @@ def test_verify_drops_facts_citing_unseen_sources() -> None:
         {
             "facts": [
                 {"label": "City", "value": "Santa Clarita", "source_id": "census"},
-                {"label": "Zone", "value": "Very High", "source_id": "la-fhsz"},
+                {"label": "Zone", "value": "Very High", "source_id": "calfire-fhsz-lra"},
             ]
         },
         tools,
@@ -106,7 +108,11 @@ def test_agent_loop_builds_cited_note() -> None:
                     {
                         "summary": "Very High zone.",
                         "facts": [
-                            {"label": "Zone", "value": "Very High (LRA)", "source_id": "la-fhsz"},
+                            {
+                                "label": "Zone",
+                                "value": "Very High (LRA)",
+                                "source_id": "calfire-fhsz-lra",
+                            },
                             {"label": "Invented", "value": "x", "source_id": "made-up"},
                         ],
                         "to_check": ["Confirm the fire agency."],
@@ -123,7 +129,7 @@ def test_agent_loop_builds_cited_note() -> None:
     note = asyncio.run(go())
     assert note.city == "Santa Clarita" and note.hazard_class == "Very High"
     assert [f.label for f in note.facts] == ["Zone"]
-    assert {s.id for s in note.sources} == {"census", "la-fhsz", "calfire-fires"}
+    assert {s.id for s in note.sources} == {"census", "calfire-fhsz-lra", "calfire-fires"}
     assert note.model and note.cost_usd > 0
 
 
@@ -176,3 +182,21 @@ def test_address_outside_california_is_flagged_not_given_california_law() -> Non
     assert note.state == "Oregon"
     assert "only has California's rules" in note.summary
     assert "State law" not in [f.label for f in note.facts]
+
+
+def test_zone_lookup_is_statewide_and_ignores_non_zone_classes() -> None:
+    from emberscan_workers.research import hazard_zone
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        if "FHSZSRA" in str(req.url):
+            return httpx.Response(200, json={"features": []})
+        attrs = {"FHSZ_Description": "NonWildland", "SRA": "LRA"}
+        return httpx.Response(200, json={"features": [{"attributes": attrs}]})
+
+    async def go():
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as http:
+            return await hazard_zone(http, 38.58, -121.49)  # Sacramento, not LA County
+
+    z = asyncio.run(go())
+    assert z["available"] and not z["in_zone"] and z["responsibility"] == "LRA"
+    assert z["source_id"] == "calfire-fhsz-lra"

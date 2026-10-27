@@ -20,6 +20,7 @@ All work happens during the hackathon (Oct 26 – Nov 4, 2026).
 - Evidence "hover for why" and thumbnail zoom react only to their own image, not the whole section.
 - Corner clips removed. Eave depth was their only use, it only feeds two proposed Zone 0 rules, and Muse Spark's estimate from video was a rough range. Each building now has No overhang / I know it (ft) / Not sure; "Not sure" makes those two rules needs-review. The eaves pipeline stage is gone and filming is one walkaround. Buildings set to "Measure from video" become "Not sure" (migration 0002).
 - California only, said plainly: the README, the New scan page and the community form say so, and address research records the state. An address outside California is flagged on the building, the New scan form and the report, and research doesn't apply California law to it.
+- Hazard-zone lookup is statewide: address research reads CAL FIRE / State Fire Marshal's own zone maps (SRA, and the 2025 LRA map) instead of LA County's, so any California address gets its zone. Checked at Valencia (Very High LRA, same as LA County's map), Julian (Very High SRA), Paradise (Very High LRA) and downtown Sacramento (no zone).
 
 ## Day 1 (continued)
 - Spend tracking (F3, part 1): Meta price table, cost functions for tokens, SAM frames (50-frame minimum), audio seconds and images, and a per-run ledger that blocks a call before it would exceed `SPEND_LIMIT_USD_PER_RUN`. 10 tests.

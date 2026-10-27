@@ -31,9 +31,11 @@ EST_TURN_TOKENS = (6_000, 1_500)
 HTTP_TIMEOUT_S = 15.0
 
 CENSUS_URL = "https://geocoding.geo.census.gov/geocoder/geographies/onelineaddress"
-LA_FHSZ_URL = (
-    "https://public.gis.lacounty.gov/public/rest/services/LACounty_Dynamic/Hazards/MapServer/18"
-)
+# Statewide Fire Hazard Severity Zones from CAL FIRE / the State Fire Marshal (CAL FIRE's ArcGIS).
+_CALFIRE = "https://services1.arcgis.com/jUJYIo9tSA7EHvfZ/arcgis/rest/services"
+FHSZ_SRA_URL = f"{_CALFIRE}/FHSZSRA_23_3/FeatureServer/0"  # State Responsibility Area zones
+FHSZ_LRA_URL = f"{_CALFIRE}/FHSALRA25_v1_All/FeatureServer/0"  # Local Responsibility Area, 2025
+ZONE_CLASSES = ("Moderate", "High", "Very High")  # other values (e.g. "NonWildland") = no zone
 FIRES_URL = (
     "https://services1.arcgis.com/jUJYIo9tSA7EHvfZ/arcgis/rest/services/"
     "California_Fire_Perimeters_last_5_years_View/FeatureServer/0"
@@ -42,9 +44,13 @@ OSFM_VIEWER = "https://osfm.fire.ca.gov/what-we-do/community-wildfire-preparedne
 
 SOURCES: dict[str, dict[str, str]] = {
     "census": {"name": "US Census Geocoder", "url": "https://geocoding.geo.census.gov/geocoder/"},
-    "la-fhsz": {
-        "name": "LA County GIS: Fire Hazard Severity Zones (2025)",
-        "url": LA_FHSZ_URL,
+    "calfire-fhsz-sra": {
+        "name": "CAL FIRE / State Fire Marshal: Fire Hazard Severity Zones in SRA",
+        "url": FHSZ_SRA_URL,
+    },
+    "calfire-fhsz-lra": {
+        "name": "CAL FIRE / State Fire Marshal: Fire Hazard Severity Zones in LRA (Mar 2025 map)",
+        "url": FHSZ_LRA_URL,
     },
     "calfire-fires": {
         "name": "CAL FIRE fire perimeters, last 5 years",
@@ -165,34 +171,41 @@ async def _arcgis_point(
     return [f.get("attributes", {}) for f in body.get("features", [])]
 
 
-async def hazard_zone(http: httpx.AsyncClient, lat: float, lon: float, county: str | None) -> dict:
-    if not county or "Los Angeles" not in county:
-        return {
-            "available": False,
-            "reason": f"No zone data source for {county or 'this county'} yet.",
-            "check_url": OSFM_VIEWER,
-            "source_id": "osfm",
-        }
-    feats = await _arcgis_point(http, LA_FHSZ_URL, lat, lon)
-    if not feats:
-        return {
+async def hazard_zone(http: httpx.AsyncClient, lat: float, lon: float) -> dict:
+    """The point's zone anywhere in California: State Responsibility Area map first, then the
+    2025 Local Responsibility Area map. Federal land (FRA) isn't mapped by the state."""
+    for source_id, url in (("calfire-fhsz-sra", FHSZ_SRA_URL), ("calfire-fhsz-lra", FHSZ_LRA_URL)):
+        feats = await _arcgis_point(http, url, lat, lon, outFields="SRA,FHSZ_Description")
+        if not feats:
+            continue
+        cls, resp = feats[0].get("FHSZ_Description"), feats[0].get("SRA")
+        if cls not in ZONE_CLASSES:
+            return {
+                "available": True,
+                "in_zone": False,
+                "hazard_class": None,
+                "responsibility": resp,
+                "note": f"Mapped as {cls or 'unzoned'} (not a Fire Hazard Severity Zone).",
+                "source_id": source_id,
+            }
+        out = {
             "available": True,
-            "in_zone": False,
-            "hazard_class": None,
-            "note": "Not inside a mapped Fire Hazard Severity Zone polygon on this layer.",
-            "source_id": "la-fhsz",
+            "in_zone": True,
+            "hazard_class": cls,
+            "responsibility": resp,
+            "source_id": source_id,
         }
-    a = feats[0]
-    revised = a.get("Revised")
+        if source_id == "calfire-fhsz-lra":
+            out["note"] = "State Fire Marshal's 2025 LRA map; local agencies adopt it by ordinance."
+        return out
     return {
         "available": True,
-        "in_zone": True,
-        "hazard_class": a.get("HAZ_CLASS"),
-        "responsibility": a.get("SRA"),
-        "map_revised": datetime.fromtimestamp(revised / 1000, UTC).date().isoformat()
-        if isinstance(revised, int | float)
-        else None,
-        "source_id": "la-fhsz",
+        "in_zone": False,
+        "hazard_class": None,
+        "note": "Not inside a mapped Fire Hazard Severity Zone (or on federal land, which the "
+        "state doesn't map).",
+        "check_url": OSFM_VIEWER,
+        "source_id": "osfm",
     }
 
 
@@ -355,8 +368,10 @@ class ResearchTools:
             out = self.results.get("address") or await geocode(self.http, self.address)
             self.results["address"] = out
         elif name == "fire_hazard_zone":
-            county = (self.results.get("address") or {}).get("county")
-            out = await hazard_zone(self.http, float(args["lat"]), float(args["lon"]), county)
+            if self.outside_california:
+                out = {"available": False, "reason": "Outside California.", "source_id": "census"}
+            else:
+                out = await hazard_zone(self.http, float(args["lat"]), float(args["lon"]))
             self.results["zone"] = out
         elif name == "recent_fires":
             out = await recent_fires(
