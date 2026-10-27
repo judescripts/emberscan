@@ -205,7 +205,6 @@ export const PIPELINE_STAGES = [
   "segment",
   "privacy",
   "measure",
-  "eaves",
   "rules",
   "narration",
   "agent",

@@ -77,12 +77,12 @@ export async function saveBuilding(_prev: FormState, fd: FormData): Promise<Form
   const label = text(fd, "label");
   const units = text(fd, "units");
   const modeRaw = text(fd, "eave_mode", 10);
-  const eaveMode = modeRaw === "known" || modeRaw === "none" ? modeRaw : "video";
+  const eaveMode = modeRaw === "known" || modeRaw === "none" ? modeRaw : "unknown";
   const eaveRaw = text(fd, "eave_ft", 10);
   const eaveFt = eaveMode === "known" ? Number(eaveRaw) : eaveMode === "none" ? 0 : null;
   if (!label) return { ok: false, error: "Give the building a label, like “Building C · Units 9–12”." };
   if (eaveMode === "known" && (!Number.isFinite(eaveFt) || (eaveFt as number) <= 0 || (eaveFt as number) > 10)) {
-    return { ok: false, error: "Enter the eave depth in feet (for example 1.5), or choose “Measure from video”." };
+    return { ok: false, error: "Enter the eave depth in feet (for example 1.5), or choose “Not sure”." };
   }
   const address = text(fd, "address", 200);
   const db = await getDb();

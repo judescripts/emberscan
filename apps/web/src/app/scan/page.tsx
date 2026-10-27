@@ -81,14 +81,12 @@ async function FormSection({ searchParams }: { searchParams: PageProps<"/scan">[
       buildings={list.map((b) => ({
         id: b.id,
         label: b.label,
-        // corner clips only help when the eave depth isn't known yet
-        needsCorners: b.eaveMode === "video",
         eave:
           b.eaveMode === "none"
-            ? "No eave overhang (entered): no corner clips needed"
+            ? "No eave overhang (entered)"
             : b.eaveMode === "known" && b.eaveFt
               ? `Eave depth: ${b.eaveFt} ft (entered)`
-              : "Eave depth: estimated from corner clips (3–5 s each, filmed along the wall)",
+              : "Eave depth not entered: rules that depend on it ask for a check on site. Add it under Manage.",
       }))}
     />
   );
@@ -119,8 +117,8 @@ function FilmingGuide() {
           land on the zone map.
         </li>
         <li>
-          <strong>Eaves:</strong> if the roof overhangs, add 3–5 s corner clips filmed along the wall so the overhang shows. Flat
-          roof or parapet? Set the building to “No overhang” and skip them.
+          <strong>Eaves:</strong> no video needed. Enter how far the roof overhangs on the building (Manage), or choose “No
+          overhang” for a flat roof or parapet.
         </li>
         <li>
           Keep people, licence plates and views inside out of frame. <strong>Talk as you go</strong> if it helps: “this woodpile

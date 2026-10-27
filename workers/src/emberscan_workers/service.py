@@ -127,7 +127,6 @@ async def research(req: ResearchRequest) -> dict:
 @app.post("/scans", status_code=202, dependencies=[Depends(require_token)])
 async def create_scan(
     video: list[UploadFile] = File(...),
-    corner: list[UploadFile] | None = File(default=None),
     building_label: str = Form(...),
     eave_depth_ft: float | None = Form(default=None),
     include_proposed: bool = Form(default=True),
@@ -135,11 +134,10 @@ async def create_scan(
     clip_sides: str | None = Form(default=None),
     community_type: str | None = Form(default=None),
 ) -> dict:
-    """One or more walkaround clips (`video`, joined in order) plus optional corner clips."""
-    corners = corner or []
-    if len(video) + len(corners) > MAX_CLIPS:
+    """One or more walkaround clips (`video`, joined in order). Eave depth is entered, if known."""
+    if len(video) > MAX_CLIPS:
         raise HTTPException(413, f"at most {MAX_CLIPS} clips per scan")
-    for up in [*video, *corners]:
+    for up in video:
         ext = Path(up.filename or "").suffix.lower() or ".mp4"
         if ext not in ALLOWED_EXT:
             raise HTTPException(415, f"unsupported video type {ext}; use MP4 or MOV")
@@ -165,7 +163,6 @@ async def create_scan(
 
     try:
         walks = [await save(up, f"upload{i:02d}" if i else "upload") for i, up in enumerate(video)]
-        corner_paths = [await save(up, f"corner{i:02d}") for i, up in enumerate(corners)]
     except BaseException:
         BUDGET.release(scan_id)
         raise
@@ -187,7 +184,6 @@ async def create_scan(
         include_proposed=include_proposed,
         concepts=chosen,
         extra_clips=walks[1:],
-        corner_clips=corner_paths,
         site_type=community_type
         if community_type in ("HOA", "Condo", "Home", "Commercial")
         else "HOA",

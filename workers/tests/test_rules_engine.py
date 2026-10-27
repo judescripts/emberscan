@@ -195,7 +195,7 @@ def test_eave_is_clamped_to_min_and_max() -> None:
 def test_no_eave_measurement_needs_review_within_max() -> None:
     r = one([H("s", "shrub", distance_ft=rng(2, 3))], EAVE, eave_depth_ft=None)
     assert r.status == "needs-review"
-    assert "eave depth wasn't measured" in r.reason
+    assert "eave depth isn't known" in r.reason
     # Beyond the 5 ft cap the hazard can't be under any eave.
     assert one([H("s", "shrub", distance_ft=rng(6, 7))], EAVE, eave_depth_ft=None).status == "pass"
 

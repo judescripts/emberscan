@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import asyncio
 import base64
+import io
 import json
 import logging
 import os
@@ -21,13 +22,36 @@ from pathlib import Path
 
 import cv2
 import numpy as np
+from PIL import Image
 
 from .contracts import Fix, Hazard, Illustration
-from .eave import _data_url, _output_text
 from .meta.client import MetaClient
 from .spend import SpendLedger, SpendLimitExceeded, image_cost, token_cost
 
 log = logging.getLogger(__name__)
+
+CHECK_IMAGE_WIDTH = 1024  # frames sent to Muse Spark for the check are downsized to this
+
+
+def _data_url(path: Path) -> str:
+    with Image.open(path) as im:
+        im = im.convert("RGB")
+        if im.width > CHECK_IMAGE_WIDTH:
+            h = round(im.height * CHECK_IMAGE_WIDTH / im.width)
+            im = im.resize((CHECK_IMAGE_WIDTH, h))
+        buf = io.BytesIO()
+        im.save(buf, format="JPEG", quality=85)
+    return "data:image/jpeg;base64," + base64.b64encode(buf.getvalue()).decode()
+
+
+def _output_text(resp: dict) -> str:
+    parts = []
+    for item in resp.get("output", []):
+        for c in item.get("content", []) or []:
+            if c.get("type") in ("output_text", "text"):
+                parts.append(c.get("text", ""))
+    return "".join(parts) or str(resp.get("output_text", ""))
+
 
 MODEL = "muse-image-1.0"
 MAX_PICTURES = int(os.environ.get("AFTER_IMAGES", "3"))  # 0 turns the feature off

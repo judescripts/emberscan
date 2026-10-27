@@ -239,7 +239,9 @@ def _check_eave_strip(c: AbsentWithin, h: Hazard, eave: Range | None) -> _Findin
         strip = f"{_num(lim_lo)} ft" if eave is None else f"{_span(lim_lo, lim_hi)} ft eave"
         return _Finding(h, "violation", f"{where}, inside the {strip} strip")
     if eave is None:
-        return _Finding(h, "review", f"{where}, but the eave depth wasn't measured")
+        return _Finding(
+            h, "review", f"{where}, but the eave depth isn't known (enter it on the building)"
+        )
     return _Finding(
         h, "review", f"{where}, at the edge of the {_span(lim_lo, lim_hi)} ft eave strip"
     )

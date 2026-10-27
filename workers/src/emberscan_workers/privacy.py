@@ -3,7 +3,7 @@
 SAM 3.1 looks for "person" and "license plate" in the same video it already tracks hazards in.
 Before evidence images or Muse Image "after" pictures are made, every box where one was seen
 is blurred in the extracted frames (with a margin, and filled across short gaps in a track).
-When the scan ends, the raw and intermediate videos and the corner frames are deleted, so only
+When the scan ends, the raw and intermediate videos and the audio are deleted, so only
 blurred frames and the report stay on disk. This is code, not a model decision: the agent
 can't skip it, and the report and the agent trace show what it did.
 """
@@ -12,7 +12,6 @@ from __future__ import annotations
 
 import logging
 import os
-import shutil
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -172,7 +171,7 @@ def guard_frames(
 
 
 def delete_raw(scan_dir: Path, uploads: list[Path]) -> list[str]:
-    """Delete the uploaded clips, intermediate videos, audio and corner frames. Returns names."""
+    """Delete the uploaded clips, intermediate videos and audio. Returns names."""
     if KEEP_RAW_VIDEO:
         return []
     gone: list[str] = []
@@ -183,8 +182,4 @@ def delete_raw(scan_dir: Path, uploads: list[Path]) -> list[str]:
                 gone.append(p.name)
         except OSError:
             log.exception("couldn't delete %s", p)
-    corners = scan_dir / "corners"
-    if corners.is_dir():
-        shutil.rmtree(corners, ignore_errors=True)
-        gone.append("corners/")
     return gone

@@ -23,7 +23,6 @@ from typing import Any
 
 from .after_image import illustrate_fixes
 from .contracts import AgentStep, BBox, Evidence, Hazard, Range, Report
-from .eave import EaveEstimate, estimate_eave
 from .hazards import BY_CLASS, CORE, Concept
 from .media import VideoInfo, extract_audio, extract_frames, join_clips, normalize, probe
 from .meta import MetaClient
@@ -50,7 +49,6 @@ STAGES = [
     "segment",
     "privacy",
     "measure",
-    "eaves",
     "rules",
     "narration",
     "agent",
@@ -59,7 +57,7 @@ STAGES = [
 SAM_FPS = float(os.environ.get("SAM_FPS", "3"))  # most frames per second sent to SAM
 MIN_SAM_FPS = float(os.environ.get("MIN_SAM_FPS", "1"))
 MARKER_SHORT_SIDE = 1080  # resolution for marker detection
-SAM_BUDGET_SHARE = 0.8  # of the per-run spend limit; the rest covers agent, eaves, narration
+SAM_BUDGET_SHARE = 0.8  # of the per-run spend limit; the rest covers agent, narration, pictures
 
 
 def sam_fps_for(duration_s: float, n_concepts: int, run_limit_usd: float) -> float:
@@ -88,9 +86,8 @@ class ScanJob:
     eave_depth_ft: Range | None = None
     include_proposed: bool = True
     concepts: list[Concept] = field(default_factory=lambda: list(CORE))
-    # More walkaround clips after video_path (joined in order) and corner clips for eave depth.
+    # More walkaround clips after video_path, joined in order.
     extra_clips: list[Path] = field(default_factory=list)
-    corner_clips: list[Path] = field(default_factory=list)
     site_type: str = "HOA"  # community type: HOA | Condo | Home | Commercial (agent wording)
     clip_sides: list[str] = field(
         default_factory=list
@@ -323,7 +320,7 @@ async def run_scan(
     p = Progress(job, notify)
     job.status = "processing"
     ledger = SpendLedger.from_env(job.scan_id, log_path=job.dir / "spend.jsonl")
-    uploads = [job.video_path, *job.extra_clips, *job.corner_clips]  # deleted when the scan ends
+    uploads = [job.video_path, *job.extra_clips]  # deleted when the scan ends
     guarded = False  # frames on disk are blurred
     try:
         await p.set("upload", "done", job.video_path.name)
@@ -347,7 +344,6 @@ async def run_scan(
                 f"tracking, over this scan's ${ledger.limit_usd:.2f} limit. Split it into two "
                 "scans (for example two sides each)."
             )
-        eave_task = asyncio.create_task(_eaves(job, client, ledger, p))
         norm = await asyncio.to_thread(normalize, job.video_path, job.dir / "normalized.mp4")
         sam_video = await asyncio.to_thread(
             normalize, job.video_path, job.dir / "sam.mp4", 720, 300.0, fps
@@ -418,10 +414,9 @@ async def run_scan(
                 f"{job.stages_detail('narration')} · {sided} hazards placed on a side",
             )
 
-        estimate = await eave_task
-        eave, eave_source = job.eave_depth_ft, ("entered" if job.eave_depth_ft else None)
-        if eave is None and estimate is not None:
-            eave, eave_source = estimate.depth_ft, "corner_video"
+        # Eave depth comes from the owner (a depth, or 0 for no overhang); None = not sure.
+        eave = job.eave_depth_ft
+        eave_source = "entered" if eave is not None else None
 
         await p.set("rules", "running")
         pack = load_pack("us-ca")
@@ -469,8 +464,6 @@ async def run_scan(
                     },
                 )
             )
-        if estimate is not None:
-            estimate.frames = []  # corner frames were deleted with the raw video
         await p.set(
             "agent",
             "done",
@@ -495,11 +488,9 @@ async def run_scan(
                 "height": norm.height,
                 "sam_fps": fps,
                 "clips": clips,
-                "corner_clips": len(job.corner_clips),
             },
             eave_depth_ft=eave,
             eave_source=eave_source,
-            eave_estimate=estimate.model_dump(exclude={"depth_ft"}) if estimate else None,
             hazards=hazards,
             results=engine.results,
             score=engine.score,
@@ -635,32 +626,3 @@ async def _narration(
         return None
     await p.set("narration", "done", f"{len(t.turns)} narration turn(s)")
     return t
-
-
-async def _eaves(
-    job: ScanJob, client: MetaClient, ledger: SpendLedger, p: Progress
-) -> EaveEstimate | None:
-    """Eave depth from corner clips (runs alongside SAM). An entered depth always wins."""
-    if job.eave_depth_ft is not None:
-        await p.set("eaves", "skipped", "Eave depth entered by the owner")
-        return None
-    if not job.corner_clips:
-        await p.set("eaves", "skipped", "No corner clips")
-        return None
-    await p.set("eaves", "running", f"Muse Spark reading {len(job.corner_clips)} corner clip(s)")
-    try:
-        est = await estimate_eave(client, ledger, job.corner_clips, job.dir)
-    except SpendLimitExceeded:
-        raise
-    except Exception as e:  # an eave estimate is optional; never fail the scan over it
-        await p.set("eaves", "skipped", f"Couldn't estimate ({type(e).__name__})")
-        return None
-    if est is None:
-        await p.set("eaves", "done", "Overhang not visible in the corner clips")
-        return None
-    r = est.depth_ft
-    if est.overhang == "none":
-        await p.set("eaves", "done", "No eave overhang (flat roof or parapet)")
-    else:
-        await p.set("eaves", "done", f"About {r.min:g}-{r.max:g} ft ({est.confidence} confidence)")
-    return est

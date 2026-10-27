@@ -86,20 +86,17 @@ def test_delete_raw_keeps_frames_and_report(tmp_path: Path) -> None:
     for name in (
         "upload.mov",
         "upload01.mov",
-        "corner00.mov",
         "sam.mp4",
         "joined.mp4",
         "audio.wav",
         "report.json",
     ):
         (tmp_path / name).write_bytes(b"x")
-    (tmp_path / "corners" / "c0").mkdir(parents=True)
     (tmp_path / "frames").mkdir()
-    ups = [tmp_path / "upload.mov", tmp_path / "upload01.mov", tmp_path / "corner00.mov"]
+    ups = [tmp_path / "upload.mov", tmp_path / "upload01.mov"]
     gone = delete_raw(tmp_path, ups)
-    assert {"upload.mov", "sam.mp4", "audio.wav", "corners/"} <= set(gone)
+    assert {"upload.mov", "upload01.mov", "sam.mp4", "audio.wav"} <= set(gone)
     assert (tmp_path / "report.json").exists() and (tmp_path / "frames").is_dir()
-    assert not (tmp_path / "corners").exists()
 
 
 def test_partner_spend_has_its_own_limit() -> None:

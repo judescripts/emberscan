@@ -19,7 +19,7 @@
 - **Uncertainty:** propagate marker size in pixels, viewing angle and mask-edge uncertainty into a **min–max range** and a confidence (high / medium / low). Ranges, never single numbers.
 - **Fallbacks:** tape measure on the ground (scale only), standard door (scale only, lower confidence). Frames without any reference are low confidence, never guessed.
 - **Upgrade (Day 7, if time):** monocular depth on Modal GPU for frames without a reference, always labeled low confidence and never the sole basis for a fail.
-- **Eave depth** (sets the Z0-08 strip width): measured from the corner profile shot as a range, or entered by the user; if neither exists, eave-based findings are needs-review.
+- **Eave depth** (sets the Z0-04 / Z0-08 strip width): entered by the owner on the building (a depth, or "No overhang"); if it is not entered, eave-based findings are needs-review. (Oct 27: estimating it from corner-clip video was removed; a visual estimate was rough and only fed two proposed rules.)
 - **Output contract:** `distance_min_ft`, `distance_max_ft`, `confidence`, `method` (`marker` | `tape` | `door` | `depth`), `frame_refs`.
 - **Rules interaction:** a range that straddles a threshold becomes needs-review (ADR 0004).
 

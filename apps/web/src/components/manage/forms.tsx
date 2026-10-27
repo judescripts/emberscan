@@ -101,7 +101,7 @@ export interface BuildingValues {
   communityId: string;
   label: string;
   units: string;
-  eaveMode: "video" | "known" | "none";
+  eaveMode: "unknown" | "known" | "none";
   eaveFt: number | null;
   address: string;
 }
@@ -154,8 +154,8 @@ export function BuildingForm({ values, onDone }: { values: BuildingValues; onDon
         <legend className="text-sm font-semibold text-ink">Eave depth</legend>
         <div className="mt-1 flex flex-wrap items-center gap-2">
           <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-line bg-surface px-3 py-2 text-sm has-[:checked]:border-brand has-[:checked]:bg-soft">
-            <input type="radio" name="eave_mode" value="video" checked={mode === "video"} onChange={() => setMode("video")} className="accent-[var(--brand)]" />
-            Measure from video
+            <input type="radio" name="eave_mode" value="unknown" checked={mode === "unknown"} onChange={() => setMode("unknown")} className="accent-[var(--brand)]" />
+            Not sure
           </label>
           <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-line bg-surface px-3 py-2 text-sm has-[:checked]:border-brand has-[:checked]:bg-soft">
             <input type="radio" name="eave_mode" value="known" checked={mode === "known"} onChange={() => setMode("known")} className="accent-[var(--brand)]" />
@@ -186,8 +186,8 @@ export function BuildingForm({ values, onDone }: { values: BuildingValues; onDon
           )}
         </div>
         <p className="mt-1 text-xs text-muted">
-          Some proposed Zone 0 rules reach as far as the eaves stick out. Flat roof or parapet with nothing sticking out? Choose
-          “No overhang” and skip the corner clips.
+          How far the roof sticks out past the wall. Some proposed Zone 0 rules reach that far. Flat roof or parapet? Choose “No
+          overhang”. Not sure? Those rules ask for a check on site.
         </p>
       </fieldset>
       <Message state={state} />
@@ -265,7 +265,7 @@ export function AddBuilding({ communityId }: { communityId: string }) {
   return (
     <BuildingForm
       key={n}
-      values={{ communityId, label: "", units: "", eaveMode: "video", eaveFt: null, address: "" }}
+      values={{ communityId, label: "", units: "", eaveMode: "unknown", eaveFt: null, address: "" }}
       onDone={() => setN((x) => x + 1)}
     />
   );

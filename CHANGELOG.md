@@ -18,6 +18,7 @@ All work happens during the hackathon (Oct 26 – Nov 4, 2026).
 - Building cover photos: an aerial photo around each researched address (USGS NAIP, public domain, basemap fallback), on the Buildings and Reports cards and the report header. No pin, since geocoded points often land on the street.
 - Coverage, not false passes: the rules engine knows how far out the walkaround covered (about 10 ft from the walls, or the farthest measured hazard). A rule whose area lies wholly beyond that (most of Zone 2) is "Not covered by this video, check on site" and doesn't move the score, instead of passing because nothing was seen; a pass that reaches beyond it says how far the video covered. The zone map hatches the ground the video didn't cover.
 - Evidence "hover for why" and thumbnail zoom react only to their own image, not the whole section.
+- Corner clips removed. Eave depth was their only use, it only feeds two proposed Zone 0 rules, and Muse Spark's estimate from video was a rough range. Each building now has No overhang / I know it (ft) / Not sure; "Not sure" makes those two rules needs-review. The eaves pipeline stage is gone and filming is one walkaround. Buildings set to "Measure from video" become "Not sure" (migration 0002).
 
 ## Day 1 (continued)
 - Spend tracking (F3, part 1): Meta price table, cost functions for tokens, SAM frames (50-frame minimum), audio seconds and images, and a per-run ledger that blocks a call before it would exceed `SPEND_LIMIT_USD_PER_RUN`. 10 tests.

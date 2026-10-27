@@ -42,7 +42,7 @@ A fix like "clear the first 5 ft of combustibles" is abstract. EmberScan shows i
 |---|---|---|
 | SAM 3.1 | Vision pipeline, privacy guard | Segment and track hazards across the whole video; find people and plates to blur |
 | Muse Spark Open | Fix-plan agent (primary) | Meta's open-weight model on Baseten plans the fixes with tool calls; same verifier and trace ([benchmarks](docs/benchmarks.md)) |
-| Muse Spark | Agent fallback, eaves, address research | Hosted backup for the fix plan; reads roof overhang from corner clips; researches the address |
+| Muse Spark | Agent fallback, address research, preview check | Hosted backup for the fix plan; researches the address; checks each AI preview shows its fix |
 | Muse Voice Transcribe | Narration | Ties spoken notes to locations in the video |
 | Muse Image | Fix previews | AI preview of what each top fix should look like, edited from your own (blurred) video frame |
 

@@ -84,7 +84,7 @@ async function Edit({ params }: { params: PageProps<"/manage/[communityId]">["pa
                                 ? "No eave overhang"
                                 : b.eaveMode === "known" && b.eaveFt
                                   ? `Eaves ${b.eaveFt} ft`
-                                  : "Eaves measured from video"}
+                                  : "Eave depth not entered"}
                             </p>
                             {summary ? (
                               <p className="text-xs text-muted">

@@ -58,17 +58,14 @@ async function ReportView({ params }: { params: PageProps<"/report/[scanId]">["p
   const imageBase = scan.workerScanId ? `/api/scans/${scan.id}/files` : null;
   const isLatest = history.find((s) => s.status === "done" && s.report)?.id === scan.id;
   const z0 = report.score;
+  // Older reports may carry an estimate from corner clips (since removed); new ones are entered or unknown.
   const eave = report.eave_depth_ft
     ? report.eave_depth_ft.max === 0
       ? `No eave overhang (${report.eave_source === "corner_video" ? "seen in corner clips" : "entered"})`
       : report.eave_source === "corner_video"
-      ? `Eaves about ${formatRange(report.eave_depth_ft)} deep (estimated from corner clips, ${report.eave_estimate?.confidence ?? "low"} confidence)`
-      : report.eave_source === "entered"
-        ? `Eaves ${formatRange(report.eave_depth_ft)} deep (entered)`
-        : `Eaves about ${formatRange(report.eave_depth_ft)} deep (measured)`
-    : building.eaveMode === "known" && building.eaveFt
-      ? `Eaves ${building.eaveFt} ft deep (entered)`
-      : "Eave depth not measured";
+        ? `Eaves about ${formatRange(report.eave_depth_ft)} deep (estimated from corner clips)`
+        : `Eaves ${formatRange(report.eave_depth_ft)} deep (entered)`
+    : "Eave depth not entered";
 
   return (
     <article className="flex flex-col gap-5">

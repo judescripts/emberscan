@@ -140,9 +140,10 @@ class Report(BaseModel):
     include_proposed: bool = True
     video: dict  # {duration_s, fps, width, height, sam_fps}
     eave_depth_ft: Range | None = None
-    # "entered" (typed by the owner, always wins) or "corner_video" (Muse Spark estimate).
+    # "entered" when the owner typed a depth (0 = no overhang); None when not sure.
+    # "corner_video" and eave_estimate only appear in reports from before corner clips were removed.
     eave_source: Literal["entered", "corner_video"] | None = None
-    eave_estimate: dict | None = None  # {confidence, reason, frames, model} for corner_video
+    eave_estimate: dict | None = None
     hazards: list[Hazard]
     results: list[RuleResult]
     score: ScoreBlock

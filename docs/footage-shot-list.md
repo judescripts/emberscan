@@ -40,7 +40,7 @@ Tape-measure the real distance from the wall to at least 5 hazards per building 
 |---|---|---|---|
 | 1 | Full walkaround | One loop about 8–12 ft from the wall at chest height; wall base and ground out to ~15 ft in frame | 1–3 min |
 | 2 | Wide context | Slow pan from ~30 ft out on each side (Zone 1 and the start of Zone 2) | 15 s per side |
-| 3 | Corner profile | At one or two corners, stand 6–10 ft out and film along the wall so the roof overhang shows in profile, with the marker in frame | 3–5 s per corner |
+| 3 | Corner profile (not needed) | Eave depth is now entered on the building in the app; no corner clip | — |
 | 4 | Eaves and soffits | Tilt up slowly along each side | 10–15 s per side |
 | 5 | Vents | Each foundation, gable and soffit vent, close enough to see the mesh | 3–5 s each |
 | 6 | Gutters and roof edge | From the ground, showing any debris | 10 s per side |
@@ -68,6 +68,6 @@ Avoid names of neighbors or anything personal. Narration is optional; the pipeli
 
 ## Minimum set for Day 2
 
-- One building: shots 1, 3, 5, 8 and 9 with the marker, at least 5 ground-truth distances and the eave depth, narrated.
+- One building: shots 1, 5, 8 and 9 with the marker, at least 5 ground-truth distances and the eave depth (entered in the app), narrated.
 - One more walkaround of a second building (tests generalization).
 - A backup copy of the best walkaround for the demo.

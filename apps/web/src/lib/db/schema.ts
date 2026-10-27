@@ -2,7 +2,7 @@ import { boolean, index, integer, jsonb, pgTable, real, text, timestamp, uniqueI
 import type { BuildingNote, Report, WorkerStage } from "../report-types";
 
 export type CommunityType = "HOA" | "Condo" | "Home" | "Commercial";
-export type EaveMode = "video" | "known" | "none"; // "none": no overhang (flat roof, parapet)
+export type EaveMode = "unknown" | "known" | "none"; // "none": no overhang (flat roof, parapet)
 export type FixStatus = "open" | "progress" | "fixed" | "verified" | "wontfix";
 export type Responsibility = "HOA" | "Owner" | "Unclear";
 export interface FixNote {
@@ -34,7 +34,7 @@ export const buildings = pgTable(
     address: text("address").notNull().default(""),
     // Address research note (worker POST /research): jurisdiction, hazard zone, law, recent fires.
     note: jsonb("note").$type<BuildingNote>(),
-    eaveMode: text("eave_mode").$type<EaveMode>().notNull().default("video"),
+    eaveMode: text("eave_mode").$type<EaveMode>().notNull().default("unknown"),
     eaveFt: real("eave_ft"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },

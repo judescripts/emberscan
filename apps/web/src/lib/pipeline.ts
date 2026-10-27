@@ -12,7 +12,6 @@ export const STAGE_INFO: Record<PipelineStage, { title: string; what: string; to
     tool: "SAM 3.1 + blur",
   },
   measure: { title: "Measure distances", what: "Uses the scale marker and the ground to turn pixels into feet, as ranges.", tool: "Marker + ground plane" },
-  eaves: { title: "Read the eaves", what: "Estimates how far the roof overhangs from your corner clips, as a range.", tool: "Muse Spark (vision)" },
   rules: { title: "Check the rules", what: "Checks every rule in the pack, with citations. Same input, same result.", tool: "Rules engine (us-ca)" },
   narration: { title: "Listen to narration", what: "Ties what you said while filming to the hazards near that moment.", tool: "Muse Voice Transcribe" },
   agent: {
@@ -64,9 +63,9 @@ export function stageRows(
     else state = "pending";
     return { name, ...info, state, detail: w?.detail ?? null };
   });
-  // Stages the worker reports that we don't know yet still show up, at the end.
+  // Stages the worker reports that we don't know yet still show up, at the end ("eaves" was retired).
   for (const s of stages ?? []) {
-    if (!(PIPELINE_STAGES as readonly string[]).includes(s.name)) {
+    if (s.name !== "eaves" && !(PIPELINE_STAGES as readonly string[]).includes(s.name)) {
       rows.push({ name: s.name, title: s.name, what: "", tool: "", state: normalizeStageStatus(s.status), detail: s.detail ?? null });
     }
   }

@@ -42,7 +42,7 @@ export async function seedSample(db: DB) {
     communityId: community.id,
     label: "Building A · Units 1–4",
     units: "1, 2, 3, 4",
-    eaveMode: "video",
+    eaveMode: "unknown",
   });
   const [b] = await db
     .insert(buildings)
