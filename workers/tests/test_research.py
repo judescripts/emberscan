@@ -22,6 +22,7 @@ CENSUS = {
                 "matchedAddress": "1 TEST RD, VALENCIA, CA, 91355",
                 "coordinates": {"x": -118.5, "y": 34.4},
                 "geographies": {
+                    "States": [{"NAME": "California"}],
                     "Counties": [{"NAME": "Los Angeles County"}],
                     "Incorporated Places": [{"NAME": "Santa Clarita city"}],
                 },
@@ -33,11 +34,11 @@ ZONE = {"features": [{"attributes": {"HAZ_CLASS": "Very High", "SRA": "LRA", "Re
 FIRES = {"features": [{"attributes": {"FIRE_NAME": "HUGHES", "YEAR_": 2025, "GIS_ACRES": 10397}}]}
 
 
-def _http() -> httpx.AsyncClient:
+def _http(census: dict = CENSUS) -> httpx.AsyncClient:
     def handler(req: httpx.Request) -> httpx.Response:
         url = str(req.url)
         if "geocoding" in url:
-            return httpx.Response(200, json=CENSUS)
+            return httpx.Response(200, json=census)
         if "Perimeters" in url:
             return httpx.Response(200, json=FIRES)
         return httpx.Response(200, json=ZONE)
@@ -158,3 +159,20 @@ def test_safe_entry_retries_once_when_the_agent_stops(monkeypatch) -> None:
     monkeypatch.setenv("META_API_KEY", "test")
     out = asyncio.run(R.research_address_safe("1 Test Rd", SpendLedger("t", 0.05)))
     assert out.model == "m"
+
+
+def test_address_outside_california_is_flagged_not_given_california_law() -> None:
+    oregon = json.loads(json.dumps(CENSUS))
+    match = oregon["result"]["addressMatches"][0]
+    match["geographies"] = {"States": [{"NAME": "Oregon"}], "Counties": [{"NAME": "Lane County"}]}
+
+    async def go():
+        async with _http(oregon) as http:
+            return await research_address(
+                "1 Test Rd", ScriptedClient([]), SpendLedger("t", 0.05), http=http
+            )
+
+    note = asyncio.run(go())
+    assert note.state == "Oregon"
+    assert "only has California's rules" in note.summary
+    assert "State law" not in [f.label for f in note.facts]

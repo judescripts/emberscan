@@ -26,6 +26,13 @@ All code, data and assets in this repository were created during the hackathon, 
 6. **Plan:** a Muse Spark Open agent (open weights, on Baseten; hosted Muse Spark as backup) calls tools (hazards, measurements, rules, cost), a code verifier checks every claim, and it builds the fix plan. It can never override a rule result. Then Muse Image draws an AI preview of each top fix (see below).
 7. **Fix and rescan:** track fixes; a rescan verifies them and updates the score.
 
+## Scope: California only, for now
+
+- **Rules:** California's defensible-space rules only (`docs/rules/us-ca.json`: PRC 4291, Gov. Code 51182, 14 CCR 1299.03, the proposed Zone 0 rules and Board guidance, checked Oct 26, 2026). Local ordinances aren't included.
+- **Other states** need their own rule pack. The rules engine is state-agnostic; the work is the legal research and each state's hazard-zone data.
+- **Addresses outside California** are flagged on the building, the New scan form and the report.
+- **Hazard-zone lookup** reads Los Angeles County's Fire Hazard Severity Zone map; elsewhere in California the research note points to CAL FIRE's zone viewer instead.
+
 ## AI previews of the fix
 
 A fix like "clear the first 5 ft of combustibles" is abstract. EmberScan shows it on your own building: Muse Image edits the real video frame to show only that fix done, next to the frame as it is now.

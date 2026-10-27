@@ -80,6 +80,7 @@ class BuildingNote(BaseModel):
     matched_address: str | None = None
     lat: float | None = None
     lon: float | None = None
+    state: str | None = None  # e.g. "California"; EmberScan's rules are California's only
     county: str | None = None
     city: str | None = None  # incorporated city, or None when unincorporated
     hazard_class: str | None = None  # "Very High" | "High" | "Moderate" | None (unknown)
@@ -105,7 +106,7 @@ async def geocode(http: httpx.AsyncClient, address: str) -> dict[str, Any]:
             "address": address,
             "benchmark": "Public_AR_Current",
             "vintage": "Current_Current",
-            "layers": "Counties,Incorporated Places,Census Designated Places",
+            "layers": "States,Counties,Incorporated Places,Census Designated Places",
             "format": "json",
         },
     )
@@ -125,6 +126,7 @@ async def geocode(http: httpx.AsyncClient, address: str) -> dict[str, Any]:
         "matched_address": m.get("matchedAddress"),
         "lat": round(float(m["coordinates"]["y"]), 6),
         "lon": round(float(m["coordinates"]["x"]), 6),
+        "state": first("States"),
         "county": first("Counties"),
         "incorporated_city": _place_name(first("Incorporated Places")),
         "census_place": first("Census Designated Places"),
@@ -260,6 +262,7 @@ Use only what the tools return; never guess a hazard zone, agency, or fire. Step
 5. submit_note: a 2-4 sentence plain-language summary for a homeowner or property manager,
    facts (each citing the source_id from the tool output it came from), and things the owner
    should confirm (for example which local fire agency enforces, or the zone when unknown).
+If the address is outside California, say so first: EmberScan only has California's rules so far.
 Never say a property is safe or compliant."""
 
 TOOLS: list[dict[str, Any]] = [
@@ -342,6 +345,11 @@ class ResearchTools:
     seen_sources: set[str] = field(default_factory=set)
     results: dict[str, Any] = field(default_factory=dict)
 
+    @property
+    def outside_california(self) -> bool:
+        state = (self.results.get("address") or {}).get("state")
+        return bool(state) and state != "California"
+
     async def call(self, name: str, args: dict[str, Any]) -> Any:
         if name == "lookup_address":
             out = self.results.get("address") or await geocode(self.http, self.address)
@@ -356,7 +364,16 @@ class ResearchTools:
             )
             self.results["fires"] = out
         elif name == "law_that_applies":
-            out = law_that_applies(args.get("responsibility"), args.get("hazard_class"))
+            if self.outside_california:
+                out = {
+                    "applies": None,
+                    "law": None,
+                    "note": "This address is outside California. EmberScan only has California's "
+                    "rules so far; this state's rules are not covered.",
+                    "source_id": "census",
+                }
+            else:
+                out = law_that_applies(args.get("responsibility"), args.get("hazard_class"))
             self.results["law"] = out
         else:
             raise ValueError(f"unknown tool {name}")
@@ -409,6 +426,12 @@ def _fallback(tools: ResearchTools) -> tuple[str, list[Fact], list[str]]:
         top = ", ".join(f"{f['name']} ({f['year']})" for f in fires["fires"][:3])
         facts.append(Fact(label="Recent fires nearby", value=top, source_id="calfire-fires"))
     checks = ["Confirm the hazard zone and enforcing fire agency with the local fire department."]
+    if tools.outside_california:
+        summary = (
+            f"This address is in {a.get('state')}. EmberScan only has California's rules so far, "
+            "so a scan here won't reflect this state's requirements."
+        )
+        return summary, facts, checks
     return "Background on this address from public map data.", facts, checks
 
 
@@ -439,6 +462,7 @@ def _note(tools: ResearchTools, summary: str, facts: list[Fact], checks: list[st
         matched_address=a.get("matched_address"),
         lat=a.get("lat"),
         lon=a.get("lon"),
+        state=a.get("state"),
         county=a.get("county"),
         city=a.get("incorporated_city"),
         hazard_class=z.get("hazard_class"),

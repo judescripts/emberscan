@@ -167,6 +167,7 @@ export interface BuildingNote {
   matched_address: string | null;
   lat: number | null;
   lon: number | null;
+  state?: string | null; // e.g. "California"; EmberScan's rules are California's only
   county: string | null;
   city: string | null;
   hazard_class: string | null;
@@ -214,3 +215,8 @@ export type PipelineStage = (typeof PIPELINE_STAGES)[number];
 
 export const DEFAULT_DISCLAIMER =
   "EmberScan flags likely wildfire hazards and suggests fixes based on published defensible space rules. It is not an inspection and does not certify that any property is safe or compliant. Confirm requirements with your local fire authority.";
+
+/** True when address research placed the building outside California (rules are CA only). */
+export function outsideCalifornia(note: BuildingNote | null | undefined): boolean {
+  return Boolean(note?.state) && note?.state !== "California";
+}

@@ -23,7 +23,7 @@ export function ScanForm({
   buildings,
   initialBuilding,
 }: {
-  buildings: { id: string; label: string; eave: string }[];
+  buildings: { id: string; label: string; eave: string; outsideCalifornia: boolean }[];
   initialBuilding: string | null;
 }) {
   const router = useRouter();
@@ -146,6 +146,12 @@ export function ScanForm({
           ))}
         </select>
         {building && <p className="mt-1 text-xs text-muted">{building.eave}</p>}
+        {building?.outsideCalifornia && (
+          <p className="mt-1 text-xs font-semibold text-review" role="note">
+            This address is outside California. EmberScan only has California&apos;s rules so far, so the report won&apos;t reflect
+            this state&apos;s requirements.
+          </p>
+        )}
       </div>
 
       <div>

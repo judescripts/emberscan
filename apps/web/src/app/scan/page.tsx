@@ -4,6 +4,7 @@ import { MarkerExample } from "@/components/scan/marker-example";
 import { ScanForm } from "@/components/scan/scan-form";
 import { ButtonLink, Card, PageHeader, SectionTitle, ShortDisclaimer, Skeleton } from "@/components/ui";
 import { currentContext } from "@/lib/current";
+import { outsideCalifornia } from "@/lib/report-types";
 import { listBuildings } from "@/lib/db/queries";
 import { STAGE_INFO } from "@/lib/pipeline";
 import { PIPELINE_STAGES } from "@/lib/report-types";
@@ -19,6 +20,7 @@ export default function NewScanPage(props: PageProps<"/scan">) {
         <div className="flex flex-col gap-5">
           <Card>
             <SectionTitle kicker="Step 2">Upload the video</SectionTitle>
+            <p className="-mt-1 mb-3 text-xs text-muted">EmberScan checks California&apos;s defensible-space rules only, for now.</p>
             <Suspense fallback={<Skeleton lines={2} />}>
               <FormSection searchParams={props.searchParams} />
             </Suspense>
@@ -81,6 +83,7 @@ async function FormSection({ searchParams }: { searchParams: PageProps<"/scan">[
       buildings={list.map((b) => ({
         id: b.id,
         label: b.label,
+        outsideCalifornia: outsideCalifornia(b.note),
         eave:
           b.eaveMode === "none"
             ? "No eave overhang (entered)"

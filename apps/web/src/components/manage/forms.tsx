@@ -78,6 +78,7 @@ export function CommunityForm({
             </option>
           ))}
         </select>
+        <p className="mt-1 text-xs text-muted">California only for now. Other states need their own rule pack.</p>
       </div>
       <label className="flex items-start gap-3 text-sm">
         <input type="checkbox" name="include_proposed" defaultChecked={values.includeProposed} className="mt-1 h-4 w-4 accent-[var(--brand)]" />

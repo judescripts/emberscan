@@ -16,7 +16,7 @@ import { Card, cx, Pill, SampleBadge, ScoreBadge, Skeleton } from "@/components/
 import { requestDb } from "@/lib/db";
 import { getBuilding, getCommunity, getScan, listScans, listTasks } from "@/lib/db/queries";
 import { formatDate, formatRange, sideWords } from "@/lib/format";
-import { DEFAULT_DISCLAIMER } from "@/lib/report-types";
+import { DEFAULT_DISCLAIMER, outsideCalifornia } from "@/lib/report-types";
 import { getPack, packLabel } from "@/lib/rules";
 import { projectedScore, scoreLabel, topFixes } from "@/lib/score";
 import { taskRuleId } from "@/lib/tasks";
@@ -82,6 +82,12 @@ async function ReportView({ params }: { params: PageProps<"/report/[scanId]">["p
           {report.include_proposed ? " · proposed Zone 0 rules shown" : ""} · {eave}
           {report.video?.duration_s ? ` · ${Math.round(Number(report.video.duration_s))} s walkaround` : ""}
         </p>
+        {outsideCalifornia(building.note) && (
+          <p className="mt-1 text-sm font-semibold text-review" role="note">
+            This address is in {building.note?.state}. These are California&apos;s rules, the only ones EmberScan has so far; they
+            may not match this state&apos;s requirements.
+          </p>
+        )}
         {report.privacy?.checked && (
           <p className="mt-1 text-xs text-muted">
             <a href="#how" className="font-semibold text-ink underline underline-offset-2">

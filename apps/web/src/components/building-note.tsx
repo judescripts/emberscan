@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { researchBuilding } from "@/app/actions";
-import type { BuildingNote } from "@/lib/report-types";
+import { type BuildingNote, outsideCalifornia } from "@/lib/report-types";
 import { buttonClass, cx } from "./ui";
 
 const ZONE_TONE: Record<string, string> = {
@@ -85,6 +85,11 @@ export function BuildingNotePanel({
         <h3 className="text-xs font-semibold tracking-wide text-muted uppercase">About this address</h3>
         <ZoneChip note={note} />
       </div>
+      {outsideCalifornia(note) && (
+        <p className="mt-1.5 rounded-lg bg-review/15 px-2 py-1 font-semibold text-ink" role="note">
+          Outside California ({note.state}). EmberScan only has California&apos;s rules so far.
+        </p>
+      )}
       {note.summary && <p className="mt-1.5 text-ink">{note.summary}</p>}
       {!compact && note.facts.length > 0 && (
         <dl className="mt-2 grid gap-1.5">
