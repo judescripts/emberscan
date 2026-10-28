@@ -7,6 +7,8 @@ import { buttonClass, cx, inputClass } from "../ui";
 
 type Health = "checking" | "online" | "offline";
 
+const SLICE_BYTES = 32 * 1024 * 1024; // under the server's 50 MB per-slice limit
+
 function sortByName(list: FileList | null): File[] {
   return [...(list ?? [])].sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
 }
@@ -59,43 +61,102 @@ export function ScanForm({
   const building = buildings.find((b) => b.id === buildingId);
   const uploading = uploadPct !== null;
 
-  function submit(e: React.FormEvent) {
+  /** One request through XHR (upload progress, abortable); status 0 = network error. */
+  function send(
+    method: string,
+    url: string,
+    body: XMLHttpRequestBodyInit,
+    headers: Record<string, string>,
+    onProgress?: (loaded: number) => void,
+  ): Promise<{ status: number; text: string }> {
+    return new Promise((resolve) => {
+      const xhr = new XMLHttpRequest();
+      xhrRef.current = xhr;
+      xhr.open(method, url);
+      for (const [k, v] of Object.entries(headers)) xhr.setRequestHeader(k, v);
+      if (onProgress) xhr.upload.onprogress = (ev) => onProgress(ev.loaded);
+      xhr.onload = () => resolve({ status: xhr.status, text: xhr.responseText });
+      xhr.onerror = () => resolve({ status: 0, text: "" });
+      xhr.onabort = () => resolve({ status: -1, text: "" });
+      xhr.send(body);
+    });
+  }
+
+  function fail(status: number, text: string) {
+    let body: { error?: string; message?: string } = {};
+    try {
+      body = JSON.parse(text);
+    } catch {
+      /* non-JSON error page */
+    }
+    setUploadPct(null);
+    if (status === 0) {
+      setError({ message: "The upload was interrupted. Check your connection and try again.", offline: false });
+      return;
+    }
+    // Over budget behaves like offline: the sample report is the way to see a result.
+    const offline = body.error === "worker_unreachable" || body.error === "budget";
+    if (offline) setHealth("offline");
+    setError({ message: body.message ?? `Upload failed (${status}).`, offline });
+  }
+
+  // Clips go up in slices (Cloudflare refuses requests over 100 MB), then one call starts the scan.
+  async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!files.length || !buildingId) return;
     setError(null);
     setUploadPct(0);
-    const fd = new FormData();
-    for (const f of files) fd.append("video", f, f.name || "walkaround.mp4");
-    if (sides.some(Boolean)) fd.append("clip_sides", files.map((_, i) => sides[i] ?? "").join(","));
-    const xhr = new XMLHttpRequest();
-    xhrRef.current = xhr;
-    xhr.open("POST", `/api/scans?building=${encodeURIComponent(buildingId)}`);
-    if (needsPasscode) xhr.setRequestHeader("x-scan-passcode", passcode);
-    xhr.upload.onprogress = (ev) => {
-      if (ev.lengthComputable) setUploadPct(Math.round((ev.loaded / ev.total) * 100));
-    };
-    xhr.onload = () => {
-      let body: { scanId?: string; error?: string; message?: string } = {};
+    const headers: Record<string, string> = needsPasscode ? { "x-scan-passcode": passcode } : {};
+    const total = files.reduce((n, f) => n + f.size, 0) || 1;
+    const uploadId = crypto.randomUUID();
+    let sent = 0;
+    for (let i = 0; i < files.length; i++) {
+      const f = files[i];
+      let offset = 0;
+      let tries = 0;
+      while (offset < f.size) {
+        const slice = f.slice(offset, offset + SLICE_BYTES);
+        const r = await send(
+          "PUT",
+          `/api/uploads?upload=${uploadId}&clip=${i}&offset=${offset}`,
+          slice,
+          headers,
+          (loaded) => setUploadPct(Math.min(99, Math.round(((sent + offset + loaded) / total) * 100))),
+        );
+        if (r.status === -1) return; // left the page
+        if (r.status === 200) {
+          offset += slice.size;
+          tries = 0;
+          continue;
+        }
+        if (++tries > 3 || (r.status !== 0 && r.status !== 409)) return fail(r.status, r.text);
+        if (r.status === 409) offset = (JSON.parse(r.text) as { have: number }).have; // resume where the server is
+      }
+      sent += f.size;
+    }
+    setUploadPct(100);
+    const r = await send(
+      "POST",
+      `/api/scans?building=${encodeURIComponent(buildingId)}&upload=${uploadId}`,
+      JSON.stringify({
+        names: files.map((f) => f.name || "walkaround.mp4"),
+        sides: sides.some(Boolean) ? files.map((_, i) => sides[i] ?? "").join(",") : "",
+      }),
+      { ...headers, "content-type": "application/json" },
+    );
+    if (r.status === -1) return;
+    const body = (() => {
       try {
-        body = JSON.parse(xhr.responseText);
+        return JSON.parse(r.text) as { scanId?: string };
       } catch {
-        /* non-JSON error page */
+        return {};
       }
-      if (xhr.status === 201 && body.scanId) {
-        router.push(`/scan/${body.scanId}`);
-        return;
-      }
-      setUploadPct(null);
-      // Over budget behaves like offline: the sample report is the way to see a result.
-      const offline = body.error === "worker_unreachable" || body.error === "budget";
-      if (offline) setHealth("offline");
-      setError({ message: body.message ?? `Upload failed (${xhr.status}).`, offline });
-    };
-    xhr.onerror = () => {
-      setUploadPct(null);
-      setError({ message: "The upload was interrupted. Check your connection and try again.", offline: false });
-    };
-    xhr.send(fd);
+    })();
+    if (r.status === 201 && body.scanId) {
+      router.push(`/scan/${body.scanId}`);
+      return;
+    }
+    fail(r.status, r.text);
   }
 
   const sampleButton = (
@@ -257,7 +318,7 @@ export function ScanForm({
       {uploading && (
         <div>
           <div className="flex justify-between text-sm">
-            <span>Uploading to the pipeline…</span>
+            <span>{uploadPct === 100 ? "Handing the video to the pipeline…" : "Uploading to the pipeline…"}</span>
             <span className="tabular-nums">{uploadPct}%</span>
           </div>
           <div className="mt-1 h-2.5 overflow-hidden rounded-full bg-soft" role="progressbar" aria-valuenow={uploadPct ?? 0} aria-valuemin={0} aria-valuemax={100} aria-label="Upload progress">

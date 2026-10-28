@@ -2,11 +2,16 @@ import { getDb } from "@/lib/db";
 import { getBuilding, getCommunity } from "@/lib/db/queries";
 import { scans } from "@/lib/db/schema";
 import { isUuid } from "@/lib/ids";
+import { clipFiles, multipartFromClips, removeUpload } from "@/lib/uploads";
 import { WorkerUnreachable, passcodeOk, workerFetch, workerUrl } from "@/lib/worker";
 
-// POST /api/scans?building=<id>  body: multipart/form-data with a single `video` file part.
+// POST /api/scans?building=<id>  body: multipart/form-data with one `video` part per clip.
 // Streams the upload straight through to the worker's POST /scans (no buffering in memory),
 // prepending the building fields the worker needs. Returns { scanId } for the progress view.
+//
+// POST /api/scans?building=<id>&upload=<uuid>  body: JSON { names: string[], sides?: string }.
+// The clips were already sent in slices to /api/uploads (big videos); they're streamed from
+// disk to the worker the same way, then deleted.
 
 export const maxDuration = 300;
 
@@ -25,9 +30,23 @@ export async function POST(request: Request) {
   if (!passcodeOk(request.headers.get("x-scan-passcode"))) {
     return Response.json({ error: "passcode", message: "That scan passcode isn't right." }, { status: 401 });
   }
-  const ct = request.headers.get("content-type");
-  const boundary = boundaryOf(ct);
-  if (!boundary || !ct?.toLowerCase().startsWith("multipart/form-data") || !request.body) {
+  const uploadId = new URL(request.url).searchParams.get("upload");
+  let ct = request.headers.get("content-type");
+  let boundary = boundaryOf(ct);
+  let clips: { file: string; name: string }[] | null = null;
+  let sides = "";
+  if (uploadId) {
+    const files = await clipFiles(uploadId);
+    const body = (await request.json().catch(() => ({}))) as { names?: unknown; sides?: unknown };
+    const names = Array.isArray(body.names) ? body.names.map(String) : [];
+    if (!files || names.length !== files.length) {
+      return Response.json({ error: "bad_request", message: "The upload is incomplete. Try again." }, { status: 400 });
+    }
+    clips = files.map((file, i) => ({ file, name: names[i] }));
+    sides = typeof body.sides === "string" ? body.sides : "";
+    boundary = `----emberscan${crypto.randomUUID().replaceAll("-", "")}`;
+    ct = `multipart/form-data; boundary=${boundary}`;
+  } else if (!boundary || !ct?.toLowerCase().startsWith("multipart/form-data") || !request.body) {
     return Response.json({ error: "bad_request", message: "Send the video as multipart/form-data." }, { status: 400 });
   }
 
@@ -43,18 +62,27 @@ export async function POST(request: Request) {
   ];
   if (building.eaveMode === "known" && building.eaveFt) fields.push(["eave_depth_ft", String(building.eaveFt)]);
   if (building.eaveMode === "none") fields.push(["eave_depth_ft", "0"]);
-  const prefix = new TextEncoder().encode(fields.map(([k, v]) => fieldPart(boundary, k, v)).join(""));
+  const b = boundary;
+  if (!b || !ct) return Response.json({ error: "bad_request" }, { status: 400 });
 
-  const { readable, writable } = new TransformStream<Uint8Array, Uint8Array>();
-  const pump = (async () => {
-    const writer = writable.getWriter();
-    await writer.write(prefix);
-    writer.releaseLock();
-    await request.body!.pipeTo(writable);
-  })();
-  pump.catch(() => {
-    /* client aborted; the worker fetch below fails and reports it */
-  });
+  let readable: ReadableStream<Uint8Array>;
+  if (clips) {
+    if (sides) fields.push(["clip_sides", sides]);
+    readable = multipartFromClips(b, fields, clips);
+  } else {
+    const prefix = new TextEncoder().encode(fields.map(([k, v]) => fieldPart(b, k, v)).join(""));
+    const t = new TransformStream<Uint8Array, Uint8Array>();
+    readable = t.readable;
+    const pump = (async () => {
+      const writer = t.writable.getWriter();
+      await writer.write(prefix);
+      writer.releaseLock();
+      await request.body!.pipeTo(t.writable);
+    })();
+    pump.catch(() => {
+      /* client aborted; the worker fetch below fails and reports it */
+    });
+  }
 
   let res: Response;
   try {
@@ -71,6 +99,9 @@ export async function POST(request: Request) {
       );
     }
     throw err;
+  } finally {
+    // The worker has its own copy once it answers (or the upload is useless if it failed).
+    if (uploadId) await removeUpload(uploadId);
   }
   if (res.status === 429) {
     const body = (await res.json().catch(() => ({}))) as { detail?: string };
