@@ -18,6 +18,7 @@ import numpy as np
 
 from .contracts import BBox, Evidence, Hazard
 from .geometry import (
+    aggregate,
     assign_zone,
     contact_mode_for,
     detect_marker,
@@ -41,6 +42,23 @@ _RANK = {"low": 0, "medium": 1, "high": 2}
 MASK_BGR = (30, 84, 217)  # ember, BGR
 WALL_BGR = (255, 255, 255)
 MAX_RANGE_FT = 6.0  # wider measured ranges are treated as not measured
+# Frames whose contact point is farther than this from the marker extrapolate the ground plane
+# too far to trust. When some frames are near, only those count; when none are, not measured.
+NEAR_MARKER_FT = 10.0
+
+
+def trusted(m: DistanceMeasurement | None) -> tuple[DistanceMeasurement | None, str]:
+    """Keep a measurement only if it's worth showing: (measurement, "") or (None, why not)."""
+    if m is None:
+        return None, "no marker in view"
+    near = [f for f in m.per_frame if f.marker_dist_ft <= NEAR_MARKER_FT]
+    if not near:
+        return None, "too far from the marker"
+    if len(near) < len(m.per_frame):
+        m = aggregate(near)
+    if m is None or m.distance_ft.max - m.distance_ft.min > MAX_RANGE_FT:
+        return None, "frames disagree; base hidden or marker too far"
+    return m, ""
 
 
 def _detect_all(
@@ -188,8 +206,7 @@ def measure_hazards(
             m = measure_track(track.masks, poses, contact_mode_for(h.cls))
         except Exception:  # never fail a scan over one track
             log.exception("measuring %s failed", h.id)
-        if m is not None and m.distance_ft.max - m.distance_ft.min > MAX_RANGE_FT:
-            m = None  # far from the marker: a 0-40 ft range says nothing; leave it to review
+        m, why_not = trusted(m)
         if m is not None:
             _apply(h, m, bands)
             frame = m.best_frame.frame_index
@@ -201,7 +218,7 @@ def measure_hazards(
                 if track.boxes
                 else (h.evidence[0].frame_index if h.evidence else (h.frames[0] if h.frames else 0))
             )
-            label = f"{h.label}: not measured (no marker in view)"
+            label = f"{h.label}: not measured ({why_not})"
         if frame >= len(frames):
             continue
         rel = Path("evidence") / f"{h.id}.jpg"

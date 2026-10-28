@@ -9,7 +9,8 @@ import numpy as np
 from test_geometry_synthetic import POSES, UPRIGHT, camera, project, render, sam_mask
 
 from emberscan_workers.contracts import BBox, Evidence, Hazard
-from emberscan_workers.geometry_bridge import measure_hazards
+from emberscan_workers.geometry import FrameMeasurement, aggregate
+from emberscan_workers.geometry_bridge import measure_hazards, trusted
 from emberscan_workers.meta.sam import Box, Track
 from emberscan_workers.pipeline import ScanJob
 
@@ -74,3 +75,39 @@ def test_no_marker_keeps_visual_and_still_renders(tmp_path: Path) -> None:
     assert h.method == "visual" and h.distance_ft is None and h.zone is None
     assert h.evidence and (tmp_path / h.evidence[0].image_path).exists()
     assert np.isfinite(h.evidence[0].bbox.left)
+
+
+def _frame(i: int, mid: float, marker_ft: float, half: float = 0.3) -> FrameMeasurement:
+    return FrameMeasurement(
+        frame_index=i,
+        mid_ft=mid,
+        min_ft=max(mid - half, 0.0),
+        max_ft=mid + half,
+        confidence="high",
+        contact_px=(0.0, 0.0),
+        contact_in=(0.0, mid * 12),
+        marker_dist_ft=marker_ft,
+        reproj_rms_px=0.5,
+        edge_in=1.0,
+        fit_in=1.0,
+        extrap_in=1.0,
+        scale_in=0.1,
+    )
+
+
+def test_trusted_drops_far_frames_when_near_ones_exist() -> None:
+    # Near the marker the base reads 0.5 ft; far frames (base hidden by grass) read 9 ft.
+    m = aggregate([_frame(i, 0.5, 2.0) for i in range(4)] + [_frame(9, 9.0, 14.0)])
+    kept, why = trusted(m)
+    assert why == "" and kept is not None
+    assert kept.distance_ft.max < 1.5
+    assert 9 not in kept.frames_used
+
+
+def test_trusted_says_why_not() -> None:
+    assert trusted(None) == (None, "no marker in view")
+    far = aggregate([_frame(i, 9.0, 12.0) for i in range(3)])
+    assert trusted(far) == (None, "too far from the marker")
+    split = aggregate([_frame(1, 0.2, 3.0), _frame(2, 8.0, 9.0)])
+    assert trusted(split)[0] is None
+    assert "disagree" in trusted(split)[1]

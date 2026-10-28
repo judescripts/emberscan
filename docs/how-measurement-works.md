@@ -40,6 +40,7 @@ With four or more matching points we can solve for that transform. The checkerbo
 3. The homography turns that pixel into a ground position in inches.
 4. The distance to the **wall line** (the marker's wall edge, extended along the wall) is the hazard's distance from the house.
 5. Because the shrub is tracked across many frames, we measure it in each frame where it and the marker are both visible, and combine the results.
+6. Frames where the contact point is more than 10 ft from the marker are dropped when nearer frames exist. If none are near, or the frames still disagree by more than 6 ft (often because something in front hides the base), the hazard is shown as **not measured**, with the reason on the evidence image, and its rules go to needs-review.
 
 ## 5. Why a range, not one number
 
@@ -64,7 +65,8 @@ It never pretends to know 4.0 ft vs 6.0 ft when it can't.
 
 - **Only things that touch the ground** can be measured this way (mulch edge, shrub base, woodpile, fence post). For things in the air, like branches near a roof, the measurement is approximate or a "check on site" item.
 - **Sloped or uneven ground** adds error; that widens the range or lowers confidence.
-- **Far from the marker** (more than ~15 ft), accuracy drops, which is fine because the strictest rules are within 5 ft.
+- **Far from the marker**, accuracy drops fast; beyond 10 ft from the sheet we don't report a distance. Lay several markers along each side so every hazard has one nearby.
+- **Hidden base:** tall grass or another plant in front of a shrub hides where it meets the ground, so the outline's lower edge isn't the base. Frames like that disagree with the rest and the hazard ends up not measured rather than wrong.
 - **No marker in view:** we fall back to a tape measure on the ground (scale only) or a standard door (about 6 ft 8 in tall), with lower confidence.
 
 We check all of this against **tape-measured ground truth** from test footage; the target is that the true distance falls inside our range for at least 80% of hazards.
