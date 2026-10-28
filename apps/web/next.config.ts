@@ -13,6 +13,8 @@ const nextConfig: NextConfig = {
   ...(process.env.NEXT_DIST_DIR ? { distDir: process.env.NEXT_DIST_DIR } : {}),
   // PGlite loads its WASM and data files from its package directory at runtime.
   serverExternalPackages: ["@electric-sql/pglite"],
+  // No Next.js badge in the corner of the dev server (it shows up in screen recordings).
+  devIndicators: false,
   cacheComponents: true,
   partialPrefetching: true,
   turbopack: {

@@ -46,7 +46,10 @@ const g = globalThis as unknown as { __emberscanDb?: Promise<DB> };
 export function getDb(): Promise<DB> {
   if (!g.__emberscanDb) {
     const url = process.env.DATABASE_URL;
-    g.__emberscanDb = url ? openNeon(url) : openPglite({ migrate: true, seed: true });
+    // SEED_SAMPLE=0 starts empty (no sample community), e.g. to record onboarding from scratch.
+    g.__emberscanDb = url
+      ? openNeon(url)
+      : openPglite({ migrate: true, seed: process.env.SEED_SAMPLE !== "0" });
     g.__emberscanDb.catch(() => {
       g.__emberscanDb = undefined;
     });
