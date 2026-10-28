@@ -34,6 +34,8 @@ A printed sheet with a black-and-white checkerboard of exact 1-inch squares. **L
 
 Tape-measure the real distance from the wall to at least 5 hazards per building (mulch edge, nearest shrub, fence join, woodpile, propane tank). Also measure the **eave depth** once: along the ground from the wall to the point directly under the gutter edge. This is how we'll check the distance estimates (target: the true value is inside the reported range for 80% or more of hazards).
 
+How to do it: upload the walkaround, open the report, and for each measured finding put the tape's zero at the base of the wall and measure along the ground to the nearest part of the object. Take a photo of the tape against it (no people in frame). Then `python scripts/distance_check.py <scan dir>` writes a CSV with EmberScan's range and Muse Spark's by-eye guess for each hazard; fill in `tape_ft` and the results go in [benchmarks](benchmarks.md#distance-emberscan-vs-a-vision-models-guess-vs-a-tape).
+
 ## Shots per building
 
 | # | Shot | How | Length |
@@ -47,7 +49,7 @@ Tape-measure the real distance from the wall to at least 5 hazards per building 
 | 7 | Fence joins | Where a fence meets the wall, close and medium | 5 s each |
 | 8 | Zone 0 strip | Slow walk aimed at the ground 0–5 ft from the wall | 30–60 s per side |
 | 9 | Specific hazards | Mulch beds, woodpiles, shrubs under windows, branches over the roof, stored items, propane tanks | 5 s each |
-| 10 | Rescan pair | After one real fix (e.g. clear a mulch strip), reshoot shots 1 and 8 on that side | Same as above |
+| 10 | Rescan pair (not needed) | Only if a fix really gets done; the demo uses the AI preview instead | — |
 
 ## Narration (for Muse Voice Transcribe)
 

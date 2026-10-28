@@ -41,3 +41,27 @@ left the agent is told to submit. Replayed on the same scan, 2 runs each:
 
 Re-run: `cd workers && python scripts/bench_agent.py .data/scans/<scan>/report.json --runs 3`.
 Each run calls both models for real.
+
+## Distance: EmberScan vs a vision model's guess vs a tape
+
+Could a vision model just read the distance off a photo with the marker in it? `scripts/distance_check.py` asks Muse Spark (`muse-spark-1.3-contributor`, medium reasoning) for the distance of each marker-measured hazard, on the same frame EmberScan measured from, with the hazard boxed in orange and the marker's exact size in the prompt. So the model has the same scale reference; it judges by eye instead of with the homography. About $0.016 for 26 hazards.
+
+### Run 1 (Oct 27): four saved scans, no tape yet
+
+21 distinct hazards (two scans were the same video), from the Valencia buildings. Almost everything is within 2 ft of the wall.
+
+| | Count |
+|---|---|
+| Model's range overlaps EmberScan's range | 15 / 21 |
+| Model's single number falls inside EmberScan's range | 7 / 21 |
+| Same side of the 5 ft Zone 0 line | 19 / 21 |
+
+What it says:
+
+- **Near the wall, both get it roughly right.** A shrub against the wall is easy by eye; this is the case where measurement adds the least.
+- **The one real disagreement is ours to explain.** `h-leaf_litter-0` (a single dry leaf caught in a shrub) was measured at 4.8–9.5 ft, low confidence, zone uncertain. Muse Spark said about 1.2 ft, and looking at the frame the leaf is roughly 2 ft out. The marker was about 5 ft to the side and the leaf sits on foliage above the ground, so the homography was extrapolating from a raised point far from the sheet. EmberScan flagged it as low confidence and uncertain, but its range likely misses the truth. Fixes on the filming side: lay several markers along each side so every hazard has one nearby.
+- **Without a tape, neither column can be scored.** That needs the staged test below.
+
+### Run 2 (planned): staged test across the 5 ft line, with tape
+
+Movable objects placed at taped distances on both sides of the Zone 0 line (for example a bin at 3 ft, a chair at 4.5 ft, a pot at 6 ft, a box at 8 ft), filmed with markers laid along the wall every ~10 ft, then `distance_check.py` with `tape_ft` filled in. Target from the shot list: the tape value inside EmberScan's range for 80% or more of hazards. This is a staged accuracy test, not a real property's hazards, and it's reported that way.
