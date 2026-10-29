@@ -297,6 +297,8 @@ def _check_max_height(c: MaxHeight, h: Hazard) -> _Finding:
 
 
 def _where_seen(h: Hazard, location: str | None) -> str:
+    if location and location in _name(h).lower():
+        return ""  # "Debris in the gutter", not "Debris in the gutter seen in the gutters"
     if location == "roof":
         return " on the roof"
     if location == "gutter":
@@ -386,22 +388,26 @@ def _evaluate_rule(
     unfilmed: list[str],
     covered_ft: float | None = None,
 ) -> RuleResult:
+    area = _area(rule, zone) if covered_ft is not None else None
+    # Everything in the video is within about covered_ft of the walls, so an unmeasured hazard
+    # can't be in a band that starts beyond it (a shrub by the wall isn't "30-100 ft out").
+    beyond = bool(area) and area[0] >= (covered_ft or 0)
     findings = [
         f
         for h in hazards
         if _matches_class(rule, h)
+        if not (beyond and h.distance_ft is None)
         if (f := _finding(rule, zone, h, eave)) is not None
     ]
     violations = [f for f in findings if f.outcome == "violation"]
     reviews = [f for f in findings if f.outcome == "review"]
     clears = [f for f in findings if f.outcome == "clear"]
 
-    area = _area(rule, zone) if covered_ft is not None else None
     reach = f"the video covered about {_num(covered_ft or 0)} ft out from the walls"
     coverage: Literal["full", "partial", "none"] = "full"
     status: RuleStatus
     driving: list[_Finding]
-    if area and area[0] >= (covered_ft or 0) and not findings:
+    if beyond and not findings:
         driving = []
         status, coverage = "needs-review", "none"
         reason = (

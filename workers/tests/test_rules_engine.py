@@ -617,3 +617,16 @@ def test_without_coverage_every_zone_counts_as_filmed() -> None:
 def test_covered_distance_extends_to_the_farthest_measurement() -> None:
     assert covered_distance([]) == 10
     assert covered_distance([H("a", "shrub", distance_ft=rng(12, 18.5))]) == 18.5
+
+
+def test_unmeasured_hazard_is_not_placed_beyond_the_video() -> None:
+    wood = H("h-wood", "woodpile")  # seen, no distance: it's within the ~10 ft filmed
+    r = one([wood], ZONE2_FIREWOOD, covered_ft=10)
+    assert (r.status, r.coverage) == ("needs-review", "none")
+    assert r.hazard_ids == []
+
+
+def test_present_in_gutter_does_not_repeat_the_location() -> None:
+    pack = P(R("Z1-02", ["gutter_debris"], {"type": "present", "location": "gutter"}))
+    r = one([H("g", "gutter_debris", "Debris in the gutter")], pack)
+    assert r.reason == "Debris in the gutter seen."

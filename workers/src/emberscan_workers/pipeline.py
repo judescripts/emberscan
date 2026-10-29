@@ -75,6 +75,11 @@ def sam_fps_for(duration_s: float, n_concepts: int, run_limit_usd: float) -> flo
 SAM_CONCURRENCY = int(os.environ.get("SAM_CONCURRENCY", "6"))
 MIN_TRACK_FRAMES = 3
 MIN_SAM_CONFIDENCE = 0.3
+# Things that only exist up at the roofline. Filmed from the ground they sit in the upper part
+# of the frame; SAM also matches the same words to leaves lying on the ground ("leaves in a rain
+# gutter" finds a fallen leaf by the wall), so a track whose boxes sit low in the frame is dropped.
+ROOFLINE_CLASSES = {"gutter_debris", "roof_debris"}
+ROOFLINE_MAX_BOTTOM = 0.45  # box bottom, as a fraction of frame height
 
 
 @dataclass
@@ -159,7 +164,17 @@ def _confidence(sam_conf: float | None, measured: str | None) -> str:
     return order[min(order.index(sam), order.index(measured))]
 
 
-def hazards_from_tracks(results: list[SegmentationResult], sam_fps: float) -> list[Hazard]:
+def _on_the_ground(t: Track, frame_height: int) -> bool:
+    """True when most of a track's boxes end below the roofline band of the frame."""
+    if not t.boxes:
+        return False
+    low = sum(1 for b in t.boxes.values() if b.bottom > ROOFLINE_MAX_BOTTOM * frame_height)
+    return low * 2 > len(t.boxes)
+
+
+def hazards_from_tracks(
+    results: list[SegmentationResult], sam_fps: float, frame_height: int | None = None
+) -> list[Hazard]:
     hazards: list[Hazard] = []
     for res in results:
         concept = next((c for c in BY_CLASS.values() if c.prompt == res.concept), None)
@@ -167,6 +182,8 @@ def hazards_from_tracks(results: list[SegmentationResult], sam_fps: float) -> li
             continue
         for tid, t in res.tracks.items():
             if len(t.frames) < MIN_TRACK_FRAMES or (t.mean_confidence or 0) < MIN_SAM_CONFIDENCE:
+                continue
+            if concept.cls in ROOFLINE_CLASSES and frame_height and _on_the_ground(t, frame_height):
                 continue
             best = (
                 max(t.boxes, key=lambda i: t.boxes[i].confidence or 0) if t.boxes else t.frames[0]
@@ -397,7 +414,7 @@ async def run_scan(
             for tid, t in r.tracks.items()
             if r.concept in BY_CLASS_BY_PROMPT
         }
-        hazards = hazards_from_tracks(results, fps)
+        hazards = hazards_from_tracks(results, fps, sam_video.height)
         hazards = await asyncio.to_thread(measure, hazards, tracks, [f.path for f in frames], job)
         measured = sum(1 for h in hazards if h.distance_ft is not None)
         await p.set(
