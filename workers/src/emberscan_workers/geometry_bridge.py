@@ -91,7 +91,7 @@ def _min_conf(a: str, b: str) -> str:
 def _render(
     frame_path: Path,
     out_path: Path,
-    track: Track,
+    track: Track | list[Track],
     frame: int,
     pose: MarkerPose | None,
     label: str,
@@ -100,21 +100,25 @@ def _render(
     if img is None:
         return False
     h, w = img.shape[:2]
-    mask_dict = track.masks.get(frame)
-    if mask_dict:
+    tracks = track if isinstance(track, list) else [track]
+    mask = np.zeros((h, w), bool)
+    for t in tracks:
+        mask_dict = t.masks.get(frame)
+        if not mask_dict:
+            continue
         try:
-            mask = mask_to_frame(mask_dict, w, h)
-            overlay = img.copy()
-            overlay[mask] = MASK_BGR
-            img = cv2.addWeighted(overlay, 0.45, img, 0.55, 0)
-            contours, _ = cv2.findContours(
-                mask.astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
-            )
-            cv2.drawContours(img, contours, -1, MASK_BGR, 2)
+            mask |= mask_to_frame(mask_dict, w, h)
         except Exception:  # a bad mask shouldn't lose the evidence frame
-            log.debug("mask overlay failed for %s frame %s", track.object_id, frame)
-    box = track.boxes.get(frame)
-    if box is not None:
+            log.debug("mask overlay failed for %s frame %s", t.object_id, frame)
+    if mask.any():
+        overlay = img.copy()
+        overlay[mask] = MASK_BGR
+        img = cv2.addWeighted(overlay, 0.45, img, 0.55, 0)
+        contours, _ = cv2.findContours(
+            mask.astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
+        )
+        cv2.drawContours(img, contours, -1, MASK_BGR, 2)
+    if len(tracks) == 1 and (box := tracks[0].boxes.get(frame)) is not None:
         cv2.rectangle(
             img, (int(box.left), int(box.top)), (int(box.right), int(box.bottom)), MASK_BGR, 1
         )
@@ -238,4 +242,107 @@ def measure_hazards(
                     image_path=rel.as_posix(),
                 )
             ]
-    return hazards
+    return merge_scattered(hazards, tracks, frames, poses, job)
+
+
+# Ground litter comes back from SAM one leaf at a time: a bed of leaves is a dozen tracks, each
+# with its own evidence picture of a single leaf. Litter seen together in the same stretch of
+# video (tracks sharing a frame) is reported as one finding that outlines every piece.
+SCATTERED_CLASSES = {"leaf_litter"}
+
+
+def _groups(hs: list[Hazard]) -> list[list[Hazard]]:
+    """Chain hazards whose frame spans overlap. Tracks split at a clip cut never share a frame,
+    so a group stays within one clip."""
+    out: list[list[Hazard]] = []
+    end = -1
+    for h in sorted(hs, key=lambda h: (min(h.frames), h.id)):
+        if out and min(h.frames) <= end:
+            out[-1].append(h)
+            end = max(end, max(h.frames))
+        else:
+            out.append([h])
+            end = max(h.frames)
+    return out
+
+
+def _merge(
+    group: list[Hazard],
+    tracks: dict[str, Track],
+    frames: list[Path],
+    poses: dict[int, MarkerPose | None],
+    job: ScanJob,
+) -> Hazard:
+    measured = [h for h in group if h.distance_ft is not None]
+    # The rules care about how close the litter comes to the wall: the nearest piece speaks.
+    near = min(measured, key=lambda h: h.distance_ft.min) if measured else None  # type: ignore[union-attr]
+    lead = near or max(group, key=lambda h: (_RANK[h.confidence], h.sam_confidence or 0))
+    members = [tracks[h.id] for h in group if h.id in tracks]
+    counts: dict[int, int] = {}
+    for t in members:
+        for f in t.masks:
+            if f < len(frames):
+                counts[f] = counts.get(f, 0) + 1
+    lead_frame = lead.evidence[0].frame_index if lead.evidence else None
+    frame = max(counts, key=lambda f: (counts[f], f == lead_frame), default=lead_frame)
+
+    label = f"{lead.label} ({len(group)} spots)"
+    merged = lead.model_copy(
+        update={
+            "label": label,
+            "frames": sorted({f for h in group for f in h.frames}),
+            "sam_confidence": max((h.sam_confidence or 0) for h in group) or None,
+            "narration": None,
+        }
+    )
+    if frame is None:
+        return merged
+    r = lead.distance_ft
+    caption = (
+        f"{label}: nearest {_ft(r.min, r.max)} ft from wall ({lead.confidence})"
+        if r is not None
+        else f"{label}: not measured"
+    )
+    rel = Path("evidence") / f"{merged.id}.jpg"
+    if _render(frames[frame], job.dir / rel, members, frame, poses.get(frame), caption):
+        boxes = [t.boxes[frame] for t in members if frame in t.boxes]
+        bbox = (
+            BBox(
+                left=min(b.left for b in boxes),
+                top=min(b.top for b in boxes),
+                right=max(b.right for b in boxes),
+                bottom=max(b.bottom for b in boxes),
+            )
+            if boxes
+            else BBox(left=0, top=0, right=0, bottom=0)
+        )
+        merged.evidence = [
+            Evidence(
+                frame_index=frame,
+                timestamp_ms=int(frame * 1000 / job.sam_fps),
+                bbox=bbox,
+                image_path=rel.as_posix(),
+            )
+        ]
+    return merged
+
+
+def merge_scattered(
+    hazards: list[Hazard],
+    tracks: dict[str, Track],
+    frames: list[Path],
+    poses: dict[int, MarkerPose | None],
+    job: ScanJob,
+) -> list[Hazard]:
+    out = [h for h in hazards if h.cls not in SCATTERED_CLASSES or not h.frames]
+    for cls in sorted(SCATTERED_CLASSES):
+        for group in _groups([h for h in hazards if h.cls == cls and h.frames]):
+            if len(group) == 1:
+                out.extend(group)
+                continue
+            merged = _merge(group, tracks, frames, poses, job)
+            for h in group:  # the single-leaf pictures are superseded by the merged one
+                if h.id != merged.id and h.evidence and h.evidence[0].image_path:
+                    (job.dir / h.evidence[0].image_path).unlink(missing_ok=True)
+            out.append(merged)
+    return out
