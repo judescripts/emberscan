@@ -12,11 +12,12 @@ import asyncio
 import json
 import os
 import re
+import shutil
 import uuid
 from pathlib import Path
 
-from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, UploadFile
-from fastapi.responses import FileResponse
+from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, Request, UploadFile
+from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel, Field
 
 from .contracts import Range, Report
@@ -49,6 +50,11 @@ MAX_UPLOAD_BYTES = 500 * 1024 * 1024
 MAX_CLIPS = 40
 ALLOWED_EXT = {".mp4", ".mov", ".m4v"}
 SCAN_ID = re.compile(r"^[a-z0-9-]{8,64}$")
+# Sliced uploads (PUT /uploads/...): clips arrive in pieces small enough for any proxy in
+# front of the worker (Vercel functions accept 4.5 MB bodies), then POST /uploads/{id}/scan.
+UPLOADS_DIR = DATA_DIR / "_uploads"
+UPLOAD_ID = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
+MAX_SLICE_BYTES = 50 * 1024 * 1024
 
 app = FastAPI(title="EmberScan worker", version="0.1.0")
 JOBS: dict[str, ScanJob] = {}
@@ -166,6 +172,30 @@ async def create_scan(
     except BaseException:
         BUDGET.release(scan_id)
         raise
+    return _start(
+        scan_id,
+        d,
+        walks,
+        building_label,
+        eave_depth_ft,
+        include_proposed,
+        concepts,
+        clip_sides,
+        community_type,
+    )
+
+
+def _start(
+    scan_id: str,
+    d: Path,
+    walks: list[Path],
+    building_label: str,
+    eave_depth_ft: float | None,
+    include_proposed: bool,
+    concepts: str | None,
+    clip_sides: str | None,
+    community_type: str | None,
+) -> dict:
     chosen = list(CORE)
     if concepts:
         names = [c.strip() for c in concepts.split(",") if c.strip()]
@@ -196,6 +226,82 @@ async def create_scan(
     _save_state(job)
     asyncio.create_task(_run(job))
     return {"scan_id": scan_id}
+
+
+def _upload_dir(upload_id: str) -> Path:
+    if not UPLOAD_ID.match(upload_id):
+        raise HTTPException(404, "no such upload")
+    return UPLOADS_DIR / upload_id
+
+
+@app.put("/uploads/{upload_id}/{clip}", dependencies=[Depends(require_token)])
+async def put_slice(upload_id: str, clip: int, offset: int, request: Request):
+    """Append one slice to clip `clip`. `offset` must equal the bytes already stored, so a
+    retried slice is never written twice; on a mismatch the reply says what is stored."""
+    if not 0 <= clip < MAX_CLIPS or offset < 0:
+        raise HTTPException(400, "bad slice")
+    d = _upload_dir(upload_id)
+    d.mkdir(parents=True, exist_ok=True)
+    path = d / str(clip)
+    have = path.stat().st_size if path.exists() else 0
+    if have != offset:
+        return JSONResponse({"error": "offset", "have": have}, status_code=409)
+    n = 0
+    with path.open("ab") as f:
+        async for chunk in request.stream():
+            n += len(chunk)
+            if n > MAX_SLICE_BYTES or have + n > MAX_UPLOAD_BYTES:
+                f.truncate(have)
+                raise HTTPException(413, "slice or video too large")
+            f.write(chunk)
+    return {"size": have + n}
+
+
+class UploadScan(BaseModel):
+    names: list[str] = Field(min_length=1, max_length=MAX_CLIPS)
+    building_label: str = Field(max_length=200)
+    eave_depth_ft: float | None = None
+    include_proposed: bool = True
+    concepts: str | None = None
+    clip_sides: str | None = None
+    community_type: str | None = None
+
+
+@app.post("/uploads/{upload_id}/scan", status_code=202, dependencies=[Depends(require_token)])
+async def scan_from_upload(upload_id: str, req: UploadScan) -> dict:
+    """Start a scan from the clips sent with PUT /uploads (one per name, in order)."""
+    up = _upload_dir(upload_id)
+    files = [up / str(i) for i in range(len(req.names))]
+    stored = {p.name for p in up.iterdir()} if up.is_dir() else set()
+    if stored != {f.name for f in files}:
+        raise HTTPException(400, "the upload is incomplete")
+    exts = [Path(n).suffix.lower() or ".mp4" for n in req.names]
+    if any(e not in ALLOWED_EXT for e in exts):
+        raise HTTPException(415, "unsupported video type; use MP4 or MOV")
+    scan_id = uuid.uuid4().hex[:16]
+    try:
+        BUDGET.reserve(scan_id)
+    except BudgetExhausted as e:
+        shutil.rmtree(up, ignore_errors=True)
+        raise HTTPException(429, str(e)) from e
+    d = DATA_DIR / scan_id
+    d.mkdir(parents=True, exist_ok=True)
+    walks = [
+        f.replace(d / f"{f'upload{i:02d}' if i else 'upload'}{ext}")
+        for i, (f, ext) in enumerate(zip(files, exts, strict=True))
+    ]
+    shutil.rmtree(up, ignore_errors=True)
+    return _start(
+        scan_id,
+        d,
+        walks,
+        req.building_label,
+        req.eave_depth_ft,
+        req.include_proposed,
+        req.concepts,
+        req.clip_sides,
+        req.community_type,
+    )
 
 
 def _job(scan_id: str) -> ScanJob:

@@ -7,7 +7,42 @@ import { buttonClass, cx, inputClass } from "../ui";
 
 type Health = "checking" | "online" | "offline";
 
-const SLICE_BYTES = 32 * 1024 * 1024; // under the server's 50 MB per-slice limit
+const SLICE_BYTES = 4 * 1024 * 1024; // under the 4.5 MB body limit of Vercel functions
+
+// crypto.randomUUID needs https; this works on plain-http dev addresses too (LAN, Tailscale).
+function uuid(): string {
+  const b = crypto.getRandomValues(new Uint8Array(16));
+  b[6] = (b[6] & 0x0f) | 0x40;
+  b[8] = (b[8] & 0x3f) | 0x80;
+  const h = [...b].map((x) => x.toString(16).padStart(2, "0")).join("");
+  return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`;
+}
+
+/** The file as consecutive slices of about `size` bytes, read in one pass from the start. */
+async function* slices(file: File, size: number): AsyncGenerator<Uint8Array<ArrayBuffer>> {
+  const reader = file.stream().getReader();
+  let parts: Uint8Array[] = [];
+  let n = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (value) {
+      parts.push(value);
+      n += value.byteLength;
+    }
+    if (n >= size || (done && n > 0)) {
+      const out = new Uint8Array(n);
+      let at = 0;
+      for (const p of parts) {
+        out.set(p, at);
+        at += p.byteLength;
+      }
+      yield out;
+      parts = [];
+      n = 0;
+    }
+    if (done) return;
+  }
+}
 
 function sortByName(list: FileList | null): File[] {
   return [...(list ?? [])].sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
@@ -78,6 +113,8 @@ export function ScanForm({
       xhr.onload = () => resolve({ status: xhr.status, text: xhr.responseText });
       xhr.onerror = () => resolve({ status: 0, text: "" });
       xhr.onabort = () => resolve({ status: -1, text: "" });
+      xhr.timeout = 120_000; // a stalled slice is retried (and resumed) instead of hanging
+      xhr.ontimeout = () => resolve({ status: 0, text: "" });
       xhr.send(body);
     });
   }
@@ -108,29 +145,31 @@ export function ScanForm({
     setUploadPct(0);
     const headers: Record<string, string> = needsPasscode ? { "x-scan-passcode": passcode } : {};
     const total = files.reduce((n, f) => n + f.size, 0) || 1;
-    const uploadId = crypto.randomUUID();
+    const uploadId = uuid();
     let sent = 0;
     for (let i = 0; i < files.length; i++) {
       const f = files[i];
       let offset = 0;
-      let tries = 0;
-      while (offset < f.size) {
-        const slice = f.slice(offset, offset + SLICE_BYTES);
-        const r = await send(
-          "PUT",
-          `/api/uploads?upload=${uploadId}&clip=${i}&offset=${offset}`,
-          slice,
-          headers,
-          (loaded) => setUploadPct(Math.min(99, Math.round(((sent + offset + loaded) / total) * 100))),
-        );
-        if (r.status === -1) return; // left the page
-        if (r.status === 200) {
-          offset += slice.size;
-          tries = 0;
-          continue;
+      // Read each clip once, front to back: iOS Safari hangs reading a video File from an
+      // offset (f.slice(n) with n > 0), but streaming it from the start works.
+      for await (const slice of slices(f, SLICE_BYTES)) {
+        let tries = 0;
+        for (;;) {
+          const r = await send(
+            "PUT",
+            `/api/uploads?upload=${uploadId}&clip=${i}&offset=${offset}`,
+            slice,
+            headers,
+            (loaded) => setUploadPct(Math.min(99, Math.round(((sent + offset + loaded) / total) * 100))),
+          );
+          if (r.status === -1) return; // left the page
+          if (r.status !== 200) console.warn(`upload slice clip ${i} @${offset}: status ${r.status}`, r.text.slice(0, 120));
+          // 409 with the slice already stored: the response was lost, not the slice.
+          const have = r.status === 409 ? (JSON.parse(r.text) as { have: number }).have : -1;
+          if (r.status === 200 || have === offset + slice.byteLength) break;
+          if (++tries > 3 || (r.status !== 0 && have !== offset)) return fail(r.status, r.text);
         }
-        if (++tries > 3 || (r.status !== 0 && r.status !== 409)) return fail(r.status, r.text);
-        if (r.status === 409) offset = (JSON.parse(r.text) as { have: number }).have; // resume where the server is
+        offset += slice.byteLength;
       }
       sent += f.size;
     }
