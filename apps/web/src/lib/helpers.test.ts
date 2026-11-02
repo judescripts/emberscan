@@ -108,7 +108,7 @@ describe("zone-map scale", () => {
       ...report.hazards[0],
       id: `c${i}`,
       side: "W" as Hazard["side"],
-      // one hazard ~7 ft out narrows Zone 0 on the map, like the Constellation Rd scan
+      // one hazard ~7 ft out narrows Zone 0 on the map, like the first real office-building scan
       distance_ft: i === 0 ? { min: 4.8, max: 9.5 } : i % 2 ? { min: 0.2, max: 0.6 } : null,
     }));
     const { pins, clusters } = layoutMap(crowded);

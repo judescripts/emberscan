@@ -144,7 +144,7 @@ export function BuildingForm({ values, onDone }: { values: BuildingValues; onDon
           maxLength={200}
           autoComplete="street-address"
           className={cx(inputClass, "mt-1")}
-          placeholder="28422 Constellation Rd, Valencia, CA 91355"
+          placeholder="Street, city, state, ZIP"
           aria-describedby={`${f}-address-help`}
         />
         <p id={`${f}-address-help`} className="mt-1 text-xs text-muted">

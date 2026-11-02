@@ -3,7 +3,7 @@
 ## Fix-plan agent: hosted Muse Spark vs Muse Spark Open (story D4)
 
 Same scan, same tools, same instructions, same code verifier. Replayed with
-`workers/scripts/bench_agent.py` on the real 28422 Constellation Rd scan (3 takes, 20 hazards,
+`workers/scripts/bench_agent.py` on a real office-building scan (3 takes, 20 hazards,
 39 rules, 1 fail, commercial wording), 3 runs per model, Oct 27, 2026.
 
 | | Hosted Muse Spark | Muse Spark Open |
