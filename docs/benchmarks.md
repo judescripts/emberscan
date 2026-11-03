@@ -1,6 +1,6 @@
 # Benchmarks
 
-## Fix-plan agent: hosted Muse Spark vs Muse Spark Open (story D4)
+## Fix-plan agent: hosted Muse Spark vs Muse Spark Open
 
 Same scan, same tools, same instructions, same code verifier. Replayed with
 `workers/scripts/bench_agent.py` on a real office-building scan (3 takes, 20 hazards,
@@ -48,7 +48,7 @@ Could a vision model just read the distance off a photo with the marker in it? `
 
 ### Run 1 (Oct 27): four saved scans, no tape yet
 
-21 distinct hazards (two scans were the same video), from the Valencia buildings. Almost everything is within 2 ft of the wall.
+21 distinct hazards (two scans were the same video), from our test buildings. Almost everything is within 2 ft of the wall.
 
 | | Count |
 |---|---|
@@ -62,6 +62,6 @@ What it says:
 - **The one real disagreement is ours to explain.** `h-leaf_litter-0` (a single dry leaf caught in a shrub) was measured at 4.8–9.5 ft, low confidence, zone uncertain. Muse Spark said about 1.2 ft, and looking at the frame the leaf is roughly 2 ft out. The marker was about 5 ft to the side and the leaf sits on foliage above the ground, so the homography was extrapolating from a raised point far from the sheet. EmberScan flagged it as low confidence and uncertain, but its range likely misses the truth. Fixes on the filming side: lay several markers along each side so every hazard has one nearby.
 - **Without a tape, neither column can be scored.** That needs the staged test below.
 
-### Run 2 (planned): staged test across the 5 ft line, with tape
+### Run 2 (not run yet): staged test across the 5 ft line, with tape
 
 Movable objects placed at taped distances on both sides of the Zone 0 line (for example a bin at 3 ft, a chair at 4.5 ft, a pot at 6 ft, a box at 8 ft), filmed with markers laid along the wall every ~10 ft, then `distance_check.py` with `tape_ft` filled in. Target from the shot list: the tape value inside EmberScan's range for 80% or more of hazards. This is a staged accuracy test, not a real property's hazards, and it's reported that way.

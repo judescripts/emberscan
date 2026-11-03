@@ -13,10 +13,13 @@ Judges will ask "isn't this just an image analyzer?" The answer is rule-level pa
   - `needs-review` when the range straddles the threshold, confidence is low, the check is `manual_review`, or the rule is proposed/guidance ("would not meet the proposed rule").
   - `pass` only if the relevant area was observed and nothing matched. "Not filmed" is never a pass.
 - **Score:** counts adopted rules only; proposed Zone 0 rules get a separate readiness meter.
-- **Model boundary:** the agent (ADR 0005) reads results but can never change them (D3).
-- **Packs for other places (roadmap H6):** state law where it exists, local overlays (stricter wins, both cited), and a national best-practice baseline that is always `guidance`, never pass/fail. Hackathon scope: `us-ca` only, a per-community "include proposed rules" setting, and a Rules screen.
+- **Model boundary:** the agent (ADR 0005) reads results but can never change them.
+- **Packs for other places (roadmap):** state law where it exists, local overlays (stricter wins, both cited), and a national best-practice baseline that is always `guidance`, never pass/fail. Hackathon scope: `us-ca` only, a per-community "include proposed rules" setting, and a Rules screen.
 - **Versioning:** each scan stores `pack_id` and `version`, so old reports stay reproducible after rule updates.
 
 ## Consequences
 - Reproducible, auditable results; updating to a new regulation is a JSON change.
 - Rules that video can't settle become "check on site" items instead of fake verdicts.
+
+## As built (Nov 2)
+- The engine also knows how far out the walkaround covered: a rule whose area lies beyond it is "Not covered by this video, check on site" and doesn't change the score, and unmeasured hazards are never placed in those zones.

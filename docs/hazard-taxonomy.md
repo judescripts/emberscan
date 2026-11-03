@@ -11,11 +11,11 @@ These aren't hazards. Distances are measured from them.
 | Class | SAM concept | Role |
 |---|---|---|
 | `wall` | "exterior wall of a house" | Distance origin: where wall meets ground |
-| `eave` | "roof eave overhang" | Eave depth sets the Z0-08 strip width |
+| `eave` | (entered on the building, not detected) | Eave depth sets the Z0-08 strip width; "Not sure" makes those rules needs-review |
 | `roof` | "roof" | Roof debris (ALL-02), branch clearance (Z0-06) |
 | `chimney` | "chimney" | 10 ft branch clearance (ALL-01) |
 | `gutter` | "rain gutter" | Locates gutter debris (Z1-02) |
-| `window`, `door` | "window", "door" | 2 ft clearance (Z0-09); a door also gives a fallback scale |
+| `window`, `door` | "window", "door" | 2 ft clearance (Z0-09) |
 | `deck` | "wooden deck or stairs" | Under-deck and 5 ft rules (Z1-05, Z0-02, Z0-10) |
 | `scale_marker` | detected with OpenCV (chessboard), not SAM | Sets real-world scale and the ground plane |
 
@@ -34,8 +34,8 @@ These aren't hazards. Distances are measured from them.
 | `herbaceous_planting` | "flower bed" | Z0-11, Z0-12 | Spacing approximate |
 | `potted_plant` | "potted plant" | Z0-13 | Count and distance yes; pot size approximate |
 | `vegetation_any` | "plant" | ALL-04, Z1-05, Z2-04, Z12-01, Z12-02, Z0-02, Z0-08, Z0-09, Z0-10 | Distance yes (catch-all for clearance rules) |
-| `roof_debris` | "leaves on a roof" | ALL-02 | Only if visible from the ground |
-| `gutter_debris` | "leaves in a rain gutter" | Z1-02 | Only if visible from the ground |
+| `roof_debris` | "leaves on a roof" | ALL-02 | Only if visible from the ground; hits low in the frame are dropped |
+| `gutter_debris` | "leaves in a rain gutter" | Z1-02 | Only if visible from the ground; hits low in the frame are dropped (ground leaves) |
 | `woodpile` | "stacked firewood" | Z1-04, Z1-05, Z2-04, Z0-02, Z0-03 | Yes: distance |
 | `fence_attached` | "wooden fence" + touches `wall` | Z0-15 | Yes: contact with the wall and the first 5 ft |
 | `combustible_fence` | "wooden fence" | Z0-15, Z0-16 | Distance yes; "new" no, so review |
@@ -52,4 +52,4 @@ These aren't hazards. Distances are measured from them.
 
 ## Privacy classes (detect to blur, never report)
 
-`person`, `face`, `license_plate`, and anything seen through a window. Detected only to build blur masks before frames are stored; never saved as hazards. **VERIFY on Day 2** that SAM 3.1 handles "person" and "license plate" concepts well enough for this.
+`person`, `face`, `license_plate`, and anything seen through a window. Detected only to build blur masks before frames are stored; never saved as hazards. The privacy guard (pipeline stage `privacy`) finds them with SAM 3.1's "person" and "license plate" concepts and blurs them in every frame.

@@ -1,6 +1,6 @@
-# Test footage shot list
+# Filming guide
 
-Real footage for building the pipeline (SAM 3.1 runs on it on Day 2) and for the demo. Shoot as early as possible.
+How to film a building for EmberScan, and how we filmed the test and demo footage.
 
 ## Privacy rules (non-negotiable)
 
@@ -17,22 +17,22 @@ Real footage for building the pipeline (SAM 3.1 runs on it on Day 2) and for the
 | Resolution | 1080p | Enough detail; keeps uploads small (SAM 3.1 takes up to 15,000 frames) |
 | Frame rate | 30 fps | Smooth tracking; frames are sampled down later |
 | Lens | Main 1x, no ultrawide, no zoom | Ultrawide distortion and zoom changes break distances |
-| Orientation | Landscape | More wall base and ground in frame |
+| Orientation | Landscape preferred (portrait works) | More wall base and ground in frame |
 | Stabilization | On | Fewer blurry frames |
 | Pace | Slow walk, about 1 step per second | Better tracking |
 | Light | Overcast, or morning / late afternoon | No harsh shadows or backlit walls |
 
 ## Scale marker
 
-A printed sheet with a black-and-white checkerboard of exact 1-inch squares. **Lay it flat on the ground, checkerboard up, with one edge touching the base of the wall** (one per side, or move it at each corner). It gives the camera real-world scale and the ground plane that distances are measured along.
+A printed sheet with a black-and-white checkerboard of exact 1-inch squares. **Lay it flat on the ground, checkerboard up, with one edge touching the base of the wall** (one per side, or move it at each corner; several along a long wall is better, since hazards are measured from the frames nearest a marker). It gives the camera real-world scale and the ground plane that distances are measured along.
 
 - Print at 100% / Actual size, never "Fit to page". Check a square with a ruler: exactly 1 in.
-- The printable EmberScan marker is built in this repo on Day 3 (story C5). For today's test footage, any checkerboard printout with squares you've measured works; write the square size in the shot log.
-- No printer: lay a tape measure on the ground from the wall out to 10 ft. Last resort: a standard door (record its real width and height).
+- Print [the EmberScan marker](filming/emberscan-scale-marker.pdf) (US Letter). The app's New scan page shows how to place it.
+- No marker in view means no measurement: those hazards are reported as not measured, never guessed.
 
 ## Ground truth
 
-Tape-measure the real distance from the wall to at least 5 hazards per building (mulch edge, nearest shrub, fence join, woodpile, propane tank). Also measure the **eave depth** once: along the ground from the wall to the point directly under the gutter edge. This is how we'll check the distance estimates (target: the true value is inside the reported range for 80% or more of hazards).
+Tape-measure the real distance from the wall to at least 5 hazards per building (mulch edge, nearest shrub, fence join, woodpile, propane tank). Also measure the **eave depth** once (along the ground from the wall to the point directly under the gutter edge) and enter it on the building. This is how we'll check the distance estimates (target: the true value is inside the reported range for 80% or more of hazards).
 
 How to do it: upload the walkaround, open the report, and for each measured finding put the tape's zero at the base of the wall and measure along the ground to the nearest part of the object. Take a photo of the tape against it (no people in frame). Then `python scripts/distance_check.py <scan dir>` writes a CSV with EmberScan's range and Muse Spark's by-eye guess for each hazard; fill in `tape_ft` and the results go in [benchmarks](benchmarks.md#distance-emberscan-vs-a-vision-models-guess-vs-a-tape).
 
@@ -42,14 +42,13 @@ How to do it: upload the walkaround, open the report, and for each measured find
 |---|---|---|---|
 | 1 | Full walkaround | One loop about 8–12 ft from the wall at chest height; wall base and ground out to ~15 ft in frame | 1–3 min |
 | 2 | Wide context | Slow pan from ~30 ft out on each side (Zone 1 and the start of Zone 2) | 15 s per side |
-| 3 | Corner profile (not needed) | Eave depth is now entered on the building in the app; no corner clip | — |
-| 4 | Eaves and soffits | Tilt up slowly along each side | 10–15 s per side |
-| 5 | Vents | Each foundation, gable and soffit vent, close enough to see the mesh | 3–5 s each |
-| 6 | Gutters and roof edge | From the ground, showing any debris | 10 s per side |
-| 7 | Fence joins | Where a fence meets the wall, close and medium | 5 s each |
-| 8 | Zone 0 strip | Slow walk aimed at the ground 0–5 ft from the wall | 30–60 s per side |
-| 9 | Specific hazards | Mulch beds, woodpiles, shrubs under windows, branches over the roof, stored items, propane tanks | 5 s each |
-| 10 | Rescan pair (not needed) | Only if a fix really gets done; the demo uses the AI preview instead | — |
+| 3 | Eaves and soffits | Tilt up slowly along each side | 10–15 s per side |
+| 4 | Vents | Each foundation, gable and soffit vent, close enough to see the mesh | 3–5 s each |
+| 5 | Gutters and roof edge | From the ground, showing any debris | 10 s per side |
+| 6 | Fence joins | Where a fence meets the wall, close and medium | 5 s each |
+| 7 | Zone 0 strip | Slow walk aimed at the ground 0–5 ft from the wall | 30–60 s per side |
+| 8 | Specific hazards | Mulch beds, woodpiles, shrubs under windows, branches over the roof, stored items, propane tanks | 5 s each |
+| 9 | Rescan | After a fix is done, film the same spots again; the rescan verifies the fix | Same as 1 |
 
 ## Narration (for Muse Voice Transcribe)
 
@@ -68,8 +67,8 @@ Avoid names of neighbors or anything personal. Narration is optional; the pipeli
 |---|---|---|---|---|---|---|---|---|
 |  |  |  |  |  |  |  |  |  |
 
-## Minimum set for Day 2
+## Minimum set for a good scan
 
-- One building: shots 1, 5, 8 and 9 with the marker, at least 5 ground-truth distances and the eave depth (entered in the app), narrated.
-- One more walkaround of a second building (tests generalization).
-- A backup copy of the best walkaround for the demo.
+- Shots 1, 7 and 8 with the marker in view, narrated if you can.
+- The eave depth entered on the building (or "No overhang" / "Not sure").
+- For an accuracy check: at least 5 tape-measured distances.

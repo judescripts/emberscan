@@ -10,7 +10,7 @@ Ten days, one builder, judged on impact, Meta AI tooling, demo and technical dep
 2. All-Python web app. Rejected: weaker mobile UI; drifts toward the Streamlit look.
 3. All-TypeScript. Weaker for ffmpeg/OpenCV/geometry.
 
-Hosting: **A.** Vercel (web) + Modal (workers) + Neon/Supabase Postgres. **B.** Azure Container Apps. **C.** Self-hosted tunnel (rejected: demo depends on one PC).
+Hosting: **A.** Vercel (web) + Modal (workers) + Neon/Supabase Postgres. **B.** A managed container platform. **C.** Self-hosted tunnel (rejected: demo depends on one PC).
 
 ## Decision
 - **Web:** Next.js (App Router, TypeScript) on **Vercel**. Mobile-first, light theme by default.
@@ -26,3 +26,8 @@ Hosting: **A.** Vercel (web) + Modal (workers) + Neon/Supabase Postgres. **B.** 
 
 ## Re-check
 - Modal credit approval; Neon vs Supabase decided when the DB is created (Day 2).
+
+## As built (Nov 2)
+- Web on Vercel, worker on Modal, Postgres on **Neon** (communities, buildings, scans, fix tasks). Local dev uses PGlite.
+- No object storage or job table: scans run as background tasks in a single Modal container (`max_containers=1`), and uploads, evidence images, reports and the spend ledger live on a Modal Volume. Enough for hackathon traffic; a queue and object storage come back for real load.
+- Uploads go browser → Vercel → Modal in 4 MB slices (Vercel's request limit), so the worker token never reaches the browser. See [deploy.md](../deploy.md).

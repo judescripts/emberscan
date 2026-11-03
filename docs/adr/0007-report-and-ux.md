@@ -18,3 +18,7 @@ The report is what residents, HOA boards, inspectors and insurers see. Organizer
 ## Consequences
 - The demo and every screenshot carry the "not an image analyzer" message by construction.
 - Report and PDF can't drift apart.
+
+## As built (Nov 2)
+- Web report only; the PDF export was not built (the JSON report stays the single source, so it can be added without drift).
+- Added beyond the original order: Muse Image fix previews (Now / After, labelled as AI) under "Start here", a coverage note and hatched zone-map area for ground the video didn't cover, and an HOA view that lists every building's open fix tasks by owner.

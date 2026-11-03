@@ -12,13 +12,13 @@
 4. Structure-from-motion (too heavy for 10 days).
 
 ## Decision
-- **v1 (Day 3): Option 1 with a printed scale marker** (story C5): a US Letter checkerboard of 1 in squares, **laid flat on the ground with one edge touching the base of the wall**.
+- **Option 1 with a printed scale marker:** a US Letter checkerboard of 1 in squares, **laid flat on the ground with one edge touching the base of the wall**.
   - Flat on the ground gives the ground plane directly (pose of a planar target via standard chessboard detection), which is the plane distances are measured along.
   - The edge at the wall pins the wall/ground line, so "distance from the wall" is measured from a known line.
   - Hazard distance = gap along the ground plane between the wall line and the hazard's nearest ground-contact point (from its SAM mask), in feet.
 - **Uncertainty:** propagate marker size in pixels, viewing angle and mask-edge uncertainty into a **min–max range** and a confidence (high / medium / low). Ranges, never single numbers.
 - **Fallbacks:** tape measure on the ground (scale only), standard door (scale only, lower confidence). Frames without any reference are low confidence, never guessed.
-- **Upgrade (Day 7, if time):** monocular depth on Modal GPU for frames without a reference, always labeled low confidence and never the sole basis for a fail.
+- **Upgrade (not built):** monocular depth on Modal GPU for frames without a reference, always labeled low confidence and never the sole basis for a fail.
 - **Eave depth** (sets the Z0-04 / Z0-08 strip width): entered by the owner on the building (a depth, or "No overhang"); if it is not entered, eave-based findings are needs-review. (Oct 27: estimating it from corner-clip video was removed; a visual estimate was rough and only fed two proposed rules.)
 - **Output contract:** `distance_min_ft`, `distance_max_ft`, `confidence`, `method` (`marker` | `tape` | `door` | `depth`), `frame_refs`.
 - **Rules interaction:** a range that straddles a threshold becomes needs-review (ADR 0004).
@@ -26,3 +26,8 @@
 ## Consequences
 - Users must print and place a marker: the app explains it with a diagram and a download.
 - Accuracy is testable against tape-measured ground truth (target: true value inside the range for ≥80% of hazards).
+
+## As built (Nov 2)
+- Marker method only; tape, door and monocular-depth fallbacks were not built. A hazard with no usable marker view is "not measured", with the reason, and rules treat it as unmeasured.
+- Each hazard is measured from the frames nearest the marker; ranges wider than 6 ft count as unmeasured.
+- Accuracy so far: see [benchmarks](../benchmarks.md). A taped accuracy test across the 5 ft line is still to do.

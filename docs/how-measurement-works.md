@@ -67,6 +67,6 @@ It never pretends to know 4.0 ft vs 6.0 ft when it can't.
 - **Sloped or uneven ground** adds error; that widens the range or lowers confidence.
 - **Far from the marker**, accuracy drops fast; beyond 10 ft from the sheet we don't report a distance. Lay several markers along each side so every hazard has one nearby.
 - **Hidden base:** tall grass or another plant in front of a shrub hides where it meets the ground, so the outline's lower edge isn't the base. Frames like that disagree with the rest and the hazard ends up not measured rather than wrong.
-- **No marker in view:** we fall back to a tape measure on the ground (scale only) or a standard door (about 6 ft 8 in tall), with lower confidence.
+- **No marker in view:** the hazard is reported as not measured, with the reason, and rules treat it as unmeasured (never a pass or a fail on distance). Tape-measure and door fallbacks were planned but not built.
 
-We check all of this against **tape-measured ground truth** from test footage; the target is that the true distance falls inside our range for at least 80% of hazards.
+The target is that the true distance falls inside our range for at least 80% of hazards, checked against tape-measured ground truth. That taped test hasn't been run yet; the comparison so far is in [benchmarks](benchmarks.md#distance-emberscan-vs-a-vision-models-guess-vs-a-tape).

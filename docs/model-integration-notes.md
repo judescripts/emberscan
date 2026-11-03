@@ -1,4 +1,9 @@
-# Model Integration Notes (story A3): EmberScan
+# Model Integration Notes: EmberScan
+
+> **Status (Nov 2):** this is the kickoff-day research snapshot, kept as written. Since then:
+> - **Resolved:** the Baseten hackathon model ID `meta-models/muse-spark-open-1026` works, with tool calling; Meta and Baseten credits arrived; the participant guide (login-gated on Oct 26) confirms the open-weight prize is "Muse Glimmer or Muse Spark Open, served on participants' own hardware or through partner-provided inference".
+> - **What we use:** SAM 3.1, Muse Spark, Muse Voice Transcribe and Muse Image on the Meta Model API; Muse Spark Open on Baseten. Not used: Muse Glimmer, Muse Wonder, Modal or Fireworks inference (Modal hosts our worker only).
+> - Other **VERIFY** items below were not needed for the build and are left as they were.
 
 Event: Meta Global AI Developer Hackathon, kickoff day 2026-10-26.
 Method: read-only review of official pages only (Meta dev docs, Cerebral Valley event page, Baseten / Modal / Fireworks docs, and the official npm/PyPI registry entries for Meta's SAM parsers). Nothing was signed up for, no keys were created, no credits were claimed, no forms were submitted, and no API calls were made.
