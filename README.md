@@ -1,6 +1,6 @@
 # EmberScan
 
-**Turn a short phone video into a measured, rule-by-rule wildfire defensible-space assessment for homes, HOA communities and commercial properties.**
+**Every wildfire hazard, measured from a phone video.** Film a walkaround of a home, HOA building or commercial property, and get each hazard's distance from the wall in feet, checked against California's defensible-space rules with citations, plus a fix plan. When a measurement is too close to call, EmberScan says so instead of guessing.
 
 A resident, HOA board member or property manager films a walkaround of a building. EmberScan:
 - tracks every hazard across the video with SAM 3.1
@@ -82,6 +82,8 @@ Built with Muse Spark Open.
 - **Other states** need their own rule pack. The engine is state-agnostic; the work is the legal research and each state's hazard-zone data.
 
 ## Built during the hackathon
+
+Built by Jude Lee at [iiinigence](https://iiinigence.com).
 
 Everything in this repository was created during the hackathon, **Oct 26 – Nov 4, 2026**: all code, rule packs, docs, the marker and the sample data. Nothing was imported from earlier work. The dated git history is the record, and [CHANGELOG.md](CHANGELOG.md) summarizes it day by day.
 
