@@ -13,7 +13,7 @@ Then a Muse Spark Open agent builds a prioritized fix plan: what to do, how hard
 
 Entry for the **Meta Global AI Developer Hackathon**: Startup track, problem statement *Build for Your World*.
 
-- **Live app:** https://emberscan.vercel.app. Browsing is open. Starting a scan needs the passcode given in the submission's testing instructions, which protects the model spend.
+- **Live app:** https://emberscan.vercel.app. Browse the finished report, or start a live scan from **New scan**. Live scans are capped per day; when the cap is reached, the form offers the sample report instead.
 - **Demo video:** linked from the submission.
 
 ## Why
@@ -135,7 +135,7 @@ A typical two-minute scan costs about $0.10–0.40 in model calls. Every run is 
 - account-wide 24-hour and all-time caps
 - a cap on how many scans run at once
 
-The scan passcode protects the paid step on the public deployment.
+An optional scan passcode (`SCAN_PASSCODE`) can gate the paid step on a public deployment.
 
 ## License
 
