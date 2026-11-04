@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import { IncludeProposedToggle } from "@/components/rules/include-proposed";
 import { ButtonLink, Card, Citation, cx, PageHeader, ShortDisclaimer, Skeleton } from "@/components/ui";
 import { currentContext } from "@/lib/current";
+import { canEdit } from "@/lib/lock";
 import { formatDate, rulePackStatusWords } from "@/lib/format";
 import { getPack, packLabel, thresholdWords, ZONE_ORDER, type PackRule } from "@/lib/rules";
 
@@ -49,7 +50,7 @@ async function Rules() {
           engine; every result links to its source.
         </p>
         <div className="mt-3">
-          <IncludeProposedToggle communityId={current.id} initial={current.includeProposed} />
+          <IncludeProposedToggle communityId={current.id} initial={current.includeProposed} readOnly={!(await canEdit(current.id))} />
         </div>
         {zoneNote && (
           <details className="mt-3 text-sm">

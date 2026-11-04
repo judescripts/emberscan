@@ -40,6 +40,27 @@ export function SampleBadge() {
   );
 }
 
+export function LockedBadge() {
+  return (
+    <span className="inline-flex items-center rounded-full border border-line bg-soft px-2 py-0.5 text-[11px] font-semibold tracking-wide text-muted uppercase">
+      Example · read-only
+    </span>
+  );
+}
+
+/** Shown where a locked community's edit controls would be. */
+export function LockedNotice({ className }: { className?: string }) {
+  return (
+    <div className={cx("rounded-xl border border-line bg-soft p-3 text-sm", className)} role="note">
+      <p className="font-semibold text-ink">This example is read-only</p>
+      <p className="mt-0.5 text-muted">Browse it freely. To try a live scan, create your own community and add a building.</p>
+      <ButtonLink href="/manage/new" variant="secondary" className="mt-2">
+        + New community
+      </ButtonLink>
+    </div>
+  );
+}
+
 export function ScoreBadge({ score, size = "md" }: { score: number; size?: "md" | "lg" }) {
   const tone = scoreTone(score);
   return (

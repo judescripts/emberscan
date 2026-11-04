@@ -5,7 +5,7 @@ import { setIncludeProposed } from "@/app/actions";
 import { cx } from "../ui";
 
 /** Per-community switch: show proposed (not yet in force) rules, like California's Zone 0, in reports. */
-export function IncludeProposedToggle({ communityId, initial }: { communityId: string; initial: boolean }) {
+export function IncludeProposedToggle({ communityId, initial, readOnly = false }: { communityId: string; initial: boolean; readOnly?: boolean }) {
   const [pending, start] = useTransition();
   const [on, setOn] = useOptimistic(initial);
   return (
@@ -16,7 +16,7 @@ export function IncludeProposedToggle({ communityId, initial }: { communityId: s
         aria-checked={on}
         aria-labelledby="include-proposed-label"
         aria-describedby="include-proposed-help"
-        disabled={pending}
+        disabled={pending || readOnly}
         onClick={() =>
           start(async () => {
             setOn(!on);

@@ -2,6 +2,7 @@ import { getDb } from "@/lib/db";
 import { getBuilding, getCommunity } from "@/lib/db/queries";
 import { scans } from "@/lib/db/schema";
 import { isUuid } from "@/lib/ids";
+import { canEdit, LOCKED_MESSAGE } from "@/lib/lock";
 import { WorkerUnreachable, passcodeOk, workerFetch, workerUrl } from "@/lib/worker";
 
 // POST /api/scans?building=<id>&upload=<uuid>  body: JSON { names: string[], sides?: string }.
@@ -43,6 +44,7 @@ export async function POST(request: Request) {
   const db = await getDb();
   const building = await getBuilding(db, buildingId);
   if (!building) return Response.json({ error: "not_found", message: "Building not found." }, { status: 404 });
+  if (!(await canEdit(building.communityId))) return Response.json({ error: "locked", message: LOCKED_MESSAGE }, { status: 403 });
   const community = await getCommunity(db, building.communityId);
 
   const fields: Record<string, string> = {

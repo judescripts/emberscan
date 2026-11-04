@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { Suspense } from "react";
 import { BuildingNotePanel, ZoneChip } from "@/components/building-note";
-import { ButtonLink, Card, PageHeader, Pill, SampleBadge, ScoreBadge, ShortDisclaimer, Skeleton } from "@/components/ui";
+import { ButtonLink, Card, LockedBadge, PageHeader, Pill, SampleBadge, ScoreBadge, ShortDisclaimer, Skeleton } from "@/components/ui";
 import { currentContext } from "@/lib/current";
+import { canEdit } from "@/lib/lock";
 import { latestDone, listBuildings, listScans } from "@/lib/db/queries";
 import { scoreLabel } from "@/lib/score";
 import { firstCitation, pipelineSummary } from "@/lib/summary";
@@ -36,6 +37,7 @@ async function Buildings() {
     db,
     list.map((b) => b.id),
   );
+  const editable = await canEdit(current.id);
 
   return (
     <>
@@ -44,15 +46,22 @@ async function Buildings() {
         kicker={
           <span className="flex flex-wrap items-center gap-2">
             {current.isSample && <SampleBadge />}
+            {!editable && <LockedBadge />}
             <span>
               {current.type} · {current.place || "No place set"} · {list.length} building{list.length === 1 ? "" : "s"}
             </span>
           </span>
         }
       >
-        <ButtonLink href={`/manage/${current.id}`} variant="secondary">
-          Add or edit buildings
-        </ButtonLink>
+        {editable ? (
+          <ButtonLink href={`/manage/${current.id}`} variant="secondary">
+            Add or edit buildings
+          </ButtonLink>
+        ) : (
+          <ButtonLink href="/manage/new" variant="secondary">
+            + New community
+          </ButtonLink>
+        )}
       </PageHeader>
 
       {list.length === 0 && (
@@ -99,10 +108,15 @@ async function Buildings() {
                       </p>
                     ) : (
                       <p className="mt-1 text-sm text-muted">
-                        Not scanned yet ·{" "}
-                        <Link href={`/scan?building=${b.id}`} className="font-semibold text-brand underline underline-offset-2">
-                          Scan now
-                        </Link>
+                        Not scanned yet
+                        {editable && (
+                          <>
+                            {" · "}
+                            <Link href={`/scan?building=${b.id}`} className="font-semibold text-brand underline underline-offset-2">
+                              Scan now
+                            </Link>
+                          </>
+                        )}
                       </p>
                     )}
                   </div>
@@ -120,7 +134,7 @@ async function Buildings() {
                   </div>
                 )}
                 {b.address && (
-                  <BuildingNotePanel buildingId={b.id} address={b.address} note={b.note ?? null} compact />
+                  <BuildingNotePanel buildingId={b.id} address={b.address} note={b.note ?? null} compact readOnly={!editable} />
                 )}
                 {running && (
                   <Link href={`/scan/${running.id}`} className="text-sm font-semibold text-brand underline underline-offset-2">
@@ -133,9 +147,11 @@ async function Buildings() {
                       Open report
                     </ButtonLink>
                   )}
-                  <ButtonLink href={`/scan?building=${b.id}`} variant="secondary">
-                    {scan ? "Rescan" : "Scan now"}
-                  </ButtonLink>
+                  {editable && (
+                    <ButtonLink href={`/scan?building=${b.id}`} variant="secondary">
+                      {scan ? "Rescan" : "Scan now"}
+                    </ButtonLink>
+                  )}
                 </div>
               </Card>
             </li>

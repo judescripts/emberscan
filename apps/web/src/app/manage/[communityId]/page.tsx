@@ -4,11 +4,12 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { BuildingNotePanel } from "@/components/building-note";
 import { AddBuilding, CommunityForm, DeleteCommunity, EditableBuilding } from "@/components/manage/forms";
-import { Card, PageHeader, SampleBadge, ScoreBadge, SectionTitle, Skeleton } from "@/components/ui";
+import { Card, LockedBadge, LockedNotice, PageHeader, SampleBadge, ScoreBadge, SectionTitle, Skeleton } from "@/components/ui";
 import { requestDb } from "@/lib/db";
 import { getCommunity, latestDone, listBuildings, listScans } from "@/lib/db/queries";
 import { isUuid } from "@/lib/ids";
-import { PACK_OPTIONS } from "@/lib/rules";
+import { canEdit } from "@/lib/lock";
+import { PACK_OPTIONS, packLabel } from "@/lib/rules";
 import { pipelineSummary } from "@/lib/summary";
 
 export const metadata: Metadata = { title: "Edit community" };
@@ -29,6 +30,7 @@ async function Edit({ params }: { params: PageProps<"/manage/[communityId]">["pa
   const db = await requestDb();
   const c = await getCommunity(db, communityId);
   if (!c) notFound();
+  const editable = await canEdit(c.id);
   const buildings = await listBuildings(db, c.id);
   const scans = await listScans(
     db,
@@ -45,19 +47,41 @@ async function Edit({ params }: { params: PageProps<"/manage/[communityId]">["pa
               Communities
             </Link>
             {c.isSample && <SampleBadge />}
+            {!editable && <LockedBadge />}
           </span>
         }
       >
-        <DeleteCommunity id={c.id} name={c.name} />
+        {editable && <DeleteCommunity id={c.id} name={c.name} />}
       </PageHeader>
+      {!editable && <LockedNotice className="mb-5" />}
 
       <div className="grid gap-5 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
         <Card>
           <SectionTitle kicker="Community">Details and rules</SectionTitle>
-          <CommunityForm
-            packs={PACK_OPTIONS.map((p) => ({ ...p }))}
-            values={{ id: c.id, name: c.name, type: c.type, place: c.place, rulePack: c.rulePack, includeProposed: c.includeProposed }}
-          />
+          {editable ? (
+            <CommunityForm
+              packs={PACK_OPTIONS.map((p) => ({ ...p }))}
+              values={{ id: c.id, name: c.name, type: c.type, place: c.place, rulePack: c.rulePack, includeProposed: c.includeProposed }}
+            />
+          ) : (
+            <dl className="grid gap-1 text-sm">
+              <div>
+                <dt className="inline font-semibold text-ink">Type: </dt>
+                <dd className="inline text-muted">{c.type}</dd>
+              </div>
+              <div>
+                <dt className="inline font-semibold text-ink">Place: </dt>
+                <dd className="inline text-muted">{c.place || "Not set"}</dd>
+              </div>
+              <div>
+                <dt className="inline font-semibold text-ink">Rules: </dt>
+                <dd className="inline text-muted">
+                  {packLabel(c.rulePack)}
+                  {c.includeProposed ? ", proposed rules shown" : ""}
+                </dd>
+              </div>
+            </dl>
+          )}
         </Card>
 
         <div className="flex flex-col gap-5">
@@ -70,7 +94,8 @@ async function Edit({ params }: { params: PageProps<"/manage/[communityId]">["pa
                 const summary = scan?.report ? pipelineSummary(scan.report) : null;
                 return (
                   <li key={b.id} className="py-3 first:pt-0 last:pb-0">
-                    <EditableBuilding
+                    <BuildingRow
+                      editable={editable}
                       values={{ id: b.id, communityId: c.id, label: b.label, units: b.units, eaveMode: b.eaveMode, eaveFt: b.eaveFt, address: b.address }}
                       summary={
                         <div className="flex items-start gap-3">
@@ -102,7 +127,7 @@ async function Edit({ params }: { params: PageProps<"/manage/[communityId]">["pa
                     />
                     {b.address && (
                       <div className="mt-2">
-                        <BuildingNotePanel buildingId={b.id} address={b.address} note={b.note ?? null} />
+                        <BuildingNotePanel buildingId={b.id} address={b.address} note={b.note ?? null} readOnly={!editable} />
                       </div>
                     )}
                   </li>
@@ -110,12 +135,19 @@ async function Edit({ params }: { params: PageProps<"/manage/[communityId]">["pa
               })}
             </ul>
           </Card>
-          <Card>
-            <SectionTitle kicker="New">Add a building</SectionTitle>
-            <AddBuilding communityId={c.id} />
-          </Card>
+          {editable && (
+            <Card>
+              <SectionTitle kicker="New">Add a building</SectionTitle>
+              <AddBuilding communityId={c.id} />
+            </Card>
+          )}
         </div>
       </div>
     </>
   );
+}
+
+/** A building row: editable in place, or just its summary when the community is locked. */
+function BuildingRow({ editable, ...props }: { editable: boolean } & Parameters<typeof EditableBuilding>[0]) {
+  return editable ? <EditableBuilding {...props} /> : <>{props.summary}</>;
 }

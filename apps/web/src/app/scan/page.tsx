@@ -2,8 +2,9 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { MarkerExample } from "@/components/scan/marker-example";
 import { ScanForm } from "@/components/scan/scan-form";
-import { ButtonLink, Card, PageHeader, SectionTitle, ShortDisclaimer, Skeleton } from "@/components/ui";
+import { ButtonLink, Card, LockedNotice, PageHeader, SectionTitle, ShortDisclaimer, Skeleton } from "@/components/ui";
 import { currentContext } from "@/lib/current";
+import { canEdit } from "@/lib/lock";
 import { outsideCalifornia } from "@/lib/report-types";
 import { listBuildings } from "@/lib/db/queries";
 import { STAGE_INFO } from "@/lib/pipeline";
@@ -65,6 +66,7 @@ async function FormSection({ searchParams }: { searchParams: PageProps<"/scan">[
   if (!current) {
     return <ButtonLink href="/manage/new">+ New community</ButtonLink>;
   }
+  if (!(await canEdit(current.id))) return <LockedNotice />;
   const list = await listBuildings(db, current.id);
   if (list.length === 0) {
     return (

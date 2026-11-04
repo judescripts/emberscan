@@ -12,7 +12,7 @@ import { FixTags } from "@/components/report/fix-tags";
 import { FixTracker } from "@/components/report/fix-tracker";
 import { SinceLastScan } from "@/components/report/since-last";
 import { ZoneMap } from "@/components/report/zone-map";
-import { Card, cx, Pill, SampleBadge, ScoreBadge, Skeleton } from "@/components/ui";
+import { Card, cx, LockedBadge, Pill, SampleBadge, ScoreBadge, Skeleton } from "@/components/ui";
 import { requestDb } from "@/lib/db";
 import { getBuilding, getCommunity, getScan, listScans, listTasks } from "@/lib/db/queries";
 import { formatDate, formatRange, sideWords } from "@/lib/format";
@@ -21,6 +21,7 @@ import { getPack, packLabel } from "@/lib/rules";
 import { projectedScore, scoreLabel, topFixes } from "@/lib/score";
 import { taskRuleId } from "@/lib/tasks";
 import { isUuid } from "@/lib/ids";
+import { canEdit } from "@/lib/lock";
 import { BuildingCover } from "@/components/building-cover";
 
 export const metadata: Metadata = { title: "Report" };
@@ -46,6 +47,7 @@ async function ReportView({ params }: { params: PageProps<"/report/[scanId]">["p
   const building = await getBuilding(db, scan.buildingId);
   if (!building) notFound();
   const community = await getCommunity(db, building.communityId);
+  const editable = await canEdit(building.communityId);
   const history = await listScans(db, [building.id]);
   const prevScan = history.find((s) => s.id !== scan.id && s.status === "done" && s.report && s.createdAt < scan.createdAt);
   const tasks = await listTasks(db, [building.id]);
@@ -74,6 +76,7 @@ async function ReportView({ params }: { params: PageProps<"/report/[scanId]">["p
         <BuildingCover building={building} className="mb-4 max-h-56 [&_img]:max-h-56" />
         <div className="mb-1 flex flex-wrap items-center gap-2 text-sm text-muted">
           {scan.isSample && <SampleBadge />}
+          {!editable && <LockedBadge />}
           <span>{community?.name}</span>
         </div>
         <h1 className="text-2xl font-bold text-ink">{building.label}</h1>
@@ -235,6 +238,7 @@ async function ReportView({ params }: { params: PageProps<"/report/[scanId]">["p
                 <div className="mt-3">
                   <FixTracker
                     communityType={community?.type}
+                    readOnly={!editable}
                     task={t ? { id: t.id, status: t.status, responsibility: t.responsibility, owner: t.owner, notes: t.notes } : null}
                   />
                 </div>

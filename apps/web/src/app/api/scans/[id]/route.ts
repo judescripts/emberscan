@@ -3,6 +3,7 @@ import { getDb } from "@/lib/db";
 import { attachReport, getBuilding, getScan } from "@/lib/db/queries";
 import { scans } from "@/lib/db/schema";
 import { isUuid } from "@/lib/ids";
+import { canEdit } from "@/lib/lock";
 import { getWorkerScan, WorkerUnreachable } from "@/lib/worker";
 
 // GET /api/scans/:id — polled by the progress view. Asks the worker for fresh status, stores it,
@@ -68,6 +69,7 @@ export async function POST(_req: Request, ctx: RouteContext<"/api/scans/[id]">) 
   const scan = await getScan(db, id);
   if (!scan?.workerScanId || scan.status !== "done") return Response.json({ error: "not_done" }, { status: 409 });
   const building = await getBuilding(db, scan.buildingId);
+  if (building && !(await canEdit(building.communityId))) return Response.json({ error: "locked" }, { status: 403 });
   try {
     const w = await getWorkerScan(scan.workerScanId);
     if (!building || !w.report) return Response.json({ error: "no_report" }, { status: 409 });

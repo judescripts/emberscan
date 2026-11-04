@@ -11,15 +11,23 @@ import { buildings, communities, fixTasks, scans, type CommunityType, type FixNo
 import { SAMPLE_REPORT, SAMPLE_STAGES } from "@/lib/db/seed";
 import { PACK_OPTIONS } from "@/lib/rules";
 import { isUserSettable } from "@/lib/tasks";
+import { ADMIN_COOKIE, adminTokenOk, canEdit, LOCKED_MESSAGE } from "@/lib/lock";
 import { respWords } from "@/lib/format";
 import { workerResearch } from "@/lib/worker";
 
-// Hackathon scope: no accounts yet, so actions validate input but not identity.
+// Hackathon scope: no accounts yet, so actions validate input but not identity. The exception is a
+// locked community (the public example): only the admin can change it.
 
 export type FormState = { ok: boolean; error?: string; message?: string };
 
 function text(fd: FormData, key: string, max = 120): string {
   return String(fd.get(key) ?? "").trim().slice(0, max);
+}
+
+/** The building, if this visitor may change it; null when it's missing or its community is locked. */
+async function editableBuilding(db: Awaited<ReturnType<typeof getDb>>, buildingId: string) {
+  const b = await getBuilding(db, buildingId);
+  return b && (await canEdit(b.communityId)) ? b : null;
 }
 
 async function setCommunityCookie(id: string) {
@@ -49,6 +57,7 @@ export async function saveCommunity(_prev: FormState, fd: FormData): Promise<For
   }
   const db = await getDb();
   if (id) {
+    if (!(await canEdit(id))) return { ok: false, error: LOCKED_MESSAGE };
     await db.update(communities).set({ name, type, place, rulePack, includeProposed }).where(eq(communities.id, id));
     refresh();
     return { ok: true, message: "Saved." };
@@ -59,6 +68,7 @@ export async function saveCommunity(_prev: FormState, fd: FormData): Promise<For
 }
 
 export async function deleteCommunity(id: string) {
+  if (!(await canEdit(id))) throw new Error(LOCKED_MESSAGE);
   const db = await getDb();
   await db.delete(communities).where(eq(communities.id, id));
   (await cookies()).delete(COMMUNITY_COOKIE);
@@ -66,6 +76,7 @@ export async function deleteCommunity(id: string) {
 }
 
 export async function setIncludeProposed(communityId: string, include: boolean) {
+  if (!(await canEdit(communityId))) return;
   const db = await getDb();
   await db.update(communities).set({ includeProposed: include }).where(eq(communities.id, communityId));
   refresh();
@@ -87,12 +98,14 @@ export async function saveBuilding(_prev: FormState, fd: FormData): Promise<Form
   const address = text(fd, "address", 200);
   const db = await getDb();
   if (id) {
-    const before = await getBuilding(db, id);
+    const before = await editableBuilding(db, id);
+    if (!before) return { ok: false, error: LOCKED_MESSAGE };
     // A new address makes the old research note wrong; clear it so the card researches again.
     const note = before && before.address === address ? before.note : null;
     await db.update(buildings).set({ label, units, address, note, eaveMode, eaveFt }).where(eq(buildings.id, id));
   } else {
     if (!(await getCommunity(db, communityId))) return { ok: false, error: "Community not found." };
+    if (!(await canEdit(communityId))) return { ok: false, error: LOCKED_MESSAGE };
     await db.insert(buildings).values({ communityId, label, units, address, eaveMode, eaveFt });
   }
   refresh();
@@ -102,8 +115,8 @@ export async function saveBuilding(_prev: FormState, fd: FormData): Promise<Form
 /** Run the address research agent for a building and store its note. */
 export async function researchBuilding(id: string): Promise<FormState> {
   const db = await getDb();
-  const b = await getBuilding(db, id);
-  if (!b) return { ok: false, error: "Building not found." };
+  const b = await editableBuilding(db, id);
+  if (!b) return { ok: false, error: LOCKED_MESSAGE };
   if (b.address.length < 5) return { ok: false, error: "Add the building's street address first." };
   try {
     const note = await workerResearch(b.address);
@@ -117,6 +130,7 @@ export async function researchBuilding(id: string): Promise<FormState> {
 
 export async function deleteBuilding(id: string) {
   const db = await getDb();
+  if (!(await editableBuilding(db, id))) throw new Error(LOCKED_MESSAGE);
   await db.delete(buildings).where(eq(buildings.id, id));
   refresh();
 }
@@ -124,8 +138,8 @@ export async function deleteBuilding(id: string) {
 /** Worker offline: attach the sample report to this building as a scan clearly marked Sample. */
 export async function loadSampleReport(buildingId: string) {
   const db = await getDb();
-  const building = await getBuilding(db, buildingId);
-  if (!building) throw new Error("Building not found");
+  const building = await editableBuilding(db, buildingId);
+  if (!building) throw new Error(LOCKED_MESSAGE);
   const [scan] = await db
     .insert(scans)
     .values({
@@ -150,6 +164,7 @@ export async function updateTask(taskId: string, update: TaskUpdate): Promise<Fo
   const db = await getDb();
   const [task] = await db.select().from(fixTasks).where(eq(fixTasks.id, taskId));
   if (!task) return { ok: false, error: "Task not found." };
+  if (!(await editableBuilding(db, task.buildingId))) return { ok: false, error: LOCKED_MESSAGE };
   const note = (update.note ?? "").trim().slice(0, 500);
   const patch: Partial<typeof fixTasks.$inferInsert> = { updatedAt: new Date() };
   const notes: FixNote[] = [...task.notes];
@@ -195,6 +210,7 @@ export async function deleteScan(scanId: string, stay = false) {
   const db = await getDb();
   const [row] = await db.select().from(scans).where(eq(scans.id, scanId));
   if (!row) return;
+  if (!(await editableBuilding(db, row.buildingId))) throw new Error(LOCKED_MESSAGE);
   if (row.status !== "failed") throw new Error("Only failed scans can be removed.");
   await db.delete(scans).where(eq(scans.id, scanId));
   if (stay) {
@@ -202,4 +218,24 @@ export async function deleteScan(scanId: string, stay = false) {
     return;
   }
   redirect("/");
+}
+
+/** Admin sign-in for locked communities: checks ADMIN_TOKEN and keeps it in an httpOnly cookie. */
+export async function adminSignIn(_prev: FormState, fd: FormData): Promise<FormState> {
+  const token = String(fd.get("token") ?? "");
+  if (!adminTokenOk(token)) return { ok: false, error: "That admin key isn't right." };
+  (await cookies()).set(ADMIN_COOKIE, token, {
+    path: "/",
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    maxAge: 60 * 60 * 24 * 30,
+  });
+  refresh();
+  return { ok: true, message: "Signed in as admin. Locked communities can be edited." };
+}
+
+export async function adminSignOut() {
+  (await cookies()).delete(ADMIN_COOKIE);
+  refresh();
 }

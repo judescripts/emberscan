@@ -30,11 +30,13 @@ export function BuildingNotePanel({
   address,
   note,
   compact = false,
+  readOnly = false,
 }: {
   buildingId: string;
   address: string;
   note: BuildingNote | null;
   compact?: boolean;
+  readOnly?: boolean;
 }) {
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -48,7 +50,7 @@ export function BuildingNotePanel({
     });
 
   useEffect(() => {
-    if (address && !note && !started.current) {
+    if (address && !note && !readOnly && !started.current) {
       started.current = true;
       run();
     }
@@ -68,6 +70,7 @@ export function BuildingNotePanel({
     );
   }
   if (!note) {
+    if (readOnly) return null;
     return (
       <div className="rounded-xl bg-soft p-3 text-sm">
         <p className="text-muted">{error ?? "No research note yet."}</p>
@@ -137,7 +140,7 @@ export function BuildingNotePanel({
         </details>
       )}
       <p className="mt-2 text-xs text-muted">{note.disclaimer}</p>
-      {!compact && (
+      {!compact && !readOnly && (
         <div className="mt-2 flex flex-wrap items-center gap-2">
           <button type="button" className={buttonClass("ghost")} onClick={run} disabled={pending}>
             {pending ? "Refreshing…" : "Refresh research"}

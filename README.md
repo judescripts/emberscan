@@ -137,7 +137,7 @@ A typical two-minute scan costs about $0.10–0.40 in model calls. Every run is 
 - account-wide 24-hour and all-time caps
 - a cap on how many scans run at once
 
-An optional scan passcode (`SCAN_PASSCODE`) can gate the paid step on a public deployment.
+An optional scan passcode (`SCAN_PASSCODE`) can gate the paid step on a public deployment. The public example community is locked (`LOCKED_COMMUNITY_IDS`): visitors can browse it but not rename, edit or delete it, or change its fix tasks. The admin can still edit it after signing in at `/admin` with `ADMIN_TOKEN`.
 
 ## License
 
