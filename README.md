@@ -14,7 +14,7 @@ Then a Muse Spark Open agent builds a prioritized fix plan: what to do, how hard
 Entry for the **Meta Global AI Developer Hackathon**: Startup track, problem statement *Build for Your World*.
 
 - **Live app:** https://emberscan.vercel.app. Browse the finished report, or start a live scan from **New scan**. Live scans are capped per day; when the cap is reached, the form offers the sample report instead.
-- **Demo video:** linked from the submission.
+- **Demo video:** https://www.youtube.com/watch?v=HZMPm4eqc9A
 
 ## Why
 
