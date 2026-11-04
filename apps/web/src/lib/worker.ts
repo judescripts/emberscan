@@ -31,9 +31,10 @@ export async function workerFetch(path: string, init: RequestInit & { duplex?: "
   }
 }
 
+// Generous timeouts: the Modal worker scales to zero, and a cold start takes several seconds.
 export async function workerHealth(): Promise<boolean> {
   try {
-    const res = await workerFetch("/health", {}, 2500);
+    const res = await workerFetch("/health", {}, 20_000);
     return res.ok;
   } catch {
     return false;
@@ -44,7 +45,7 @@ export type WorkerBudget = { scans_left_today: number; spent_24h_usd: number; da
 
 export async function workerBudget(): Promise<WorkerBudget | null> {
   try {
-    const res = await workerFetch("/budget", {}, 2500);
+    const res = await workerFetch("/budget", {}, 20_000);
     return res.ok ? ((await res.json()) as WorkerBudget) : null;
   } catch {
     return null;
